@@ -1,0 +1,41 @@
+{
+  "extensionId": "com.finamx.algopack.futoi.long-short-yur",
+  "displayName": "FUTOI long/short юрлица",
+  "description": "Длинные и короткие позиции юридических лиц.",
+  "visibility": "public",
+  "platformSupport": [
+    "web"
+  ],
+  "versions": [
+    {
+      "version": "1.0.1",
+      "changelog": "Algopack_widgets: external pull, localhost bundle, default capabilities",
+      "capabilitiesRequested": [
+        "user.profile.read",
+        "ui.toast"
+      ],
+      "surfaces": {
+        "ui": {
+          "renderMode": "external-embed",
+          "embedBundleUrl": "https://cyberriver.github.io/Algopack_widgets/",
+          "embedEntryPath": "/widgets/long-short-yur/",
+          "embedSandbox": "allow-scripts allow-popups"
+        },
+        "topics": {
+          "publishes": [],
+          "subscribes": [
+            {
+              "topicType": "com.finamx.algopack.futoi.filter"
+            },
+            {
+              "topicType": "fdc3.instrument"
+            },
+            {
+              "topicType": "finamx.timeframe"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "extensionId": "com.finamx.algopack.futoi.directed-yur",
+  "displayName": "FUTOI направленная юрлица",
+  "description": "Направленная позиция юридических лиц (long − short).",
+  "visibility": "public",
+  "platformSupport": [
+    "web"
+  ],
+  "versions": [
+    {
+      "version": "1.0.1",
+      "changelog": "Algopack_widgets: external pull, localhost bundle, default capabilities",
+      "capabilitiesRequested": [
+        "user.profile.read",
+        "ui.toast"
+      ],
+      "surfaces": {
+        "ui": {
+          "renderMode": "external-embed",
+          "embedBundleUrl": "https://cyberriver.github.io/Algopack_widgets/",
+          "embedEntryPath": "/widgets/directed-yur/",
+          "embedSandbox": "allow-scripts allow-popups"
+        },
+        "topics": {
+          "publishes": [],
+          "subscribes": [
+            {
+              "topicType": "com.finamx.algopack.futoi.filter"
+            },
+            {
+              "topicType": "fdc3.instrument"
+            },
+            {
+              "topicType": "finamx.timeframe"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

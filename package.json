@@ -1,0 +1,28 @@
+{
+  "name": "algopack-widgets",
+  "version": "1.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3010",
+    "build": "next build",
+    "start": "next start -p 3010",
+    "manifests": "node scripts/generate-manifests.mjs",
+    "bake": "node scripts/bake-data.mjs",
+    "build:pages": "node scripts/export-pages.mjs",
+    "publish:ext": "echo 'Use scripts/publish-sandbox.py after a public EMBED_PUBLIC_URL exists' && exit 1"
+  },
+  "dependencies": {
+    "@finamx/bridge-protocol": "^1.5.0",
+    "@finamx/extension-sdk": "^1.4.0",
+    "lightweight-charts": "^5.2.1",
+    "next": "15.4.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.2"
+  }
+}
