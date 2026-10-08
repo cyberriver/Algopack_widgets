@@ -7,8 +7,9 @@ export async function GET(request: Request) {
   const secid = q.get('secid')?.trim() || DEFAULT_SECID;
   const lookback = (q.get('lookback') as Lookback | null) ?? 'session';
   const range = lookbackRange(lookback, q.get('sessionDate') ?? undefined);
-  return withBearer(async () => {
-    const series = await getSeries(secid, q.get('from') ?? range.from, q.get('to') ?? range.to);
+  const quick = q.get('quick') === '1';
+  return withBearer(request, async () => {
+    const series = await getSeries(secid, q.get('from') ?? range.from, q.get('to') ?? range.to, { quick });
     return { secid, ...series };
   });
 }

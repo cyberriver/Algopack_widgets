@@ -8,17 +8,20 @@
   ],
   "versions": [
     {
-      "version": "1.0.1",
-      "changelog": "Algopack_widgets: external pull, localhost bundle, default capabilities",
+      "version": "1.0.3",
+      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
       "capabilitiesRequested": [
         "user.profile.read",
         "ui.toast"
       ],
+      "integrity": {
+        "bundleSha256": "3b568f4a626c3e78c8e53e06340c66614e9aceaa0b5fa3e6b3cb42ae1f4e3bd5"
+      },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
-          "embedBundleUrl": "https://cyberriver.github.io/Algopack_widgets/",
-          "embedEntryPath": "/widgets/oi-yur/",
+          "embedBundleUrl": "https://79.174.81.214.sslip.io/",
+          "embedEntryPath": "/widgets/oi-yur",
           "embedSandbox": "allow-scripts allow-popups"
         },
         "topics": {

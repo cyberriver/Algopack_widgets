@@ -1,28 +1,18 @@
 'use client';
 
 import type { TokenStatus } from '@/lib/types';
-import { eyebrow, pane, primaryBtn, secondaryBtn } from './styles';
+import { eyebrow, pane, secondaryBtn } from './styles';
 
 export function ChartState({
   status,
-  onConnect,
   onRetry,
 }: {
   status: TokenStatus;
-  onConnect: () => void;
   onRetry?: () => void;
 }) {
-  if (status === 'ok') return null;
+  if (status === 'ok' || status === 'no_token') return null;
   return (
     <div style={{ ...pane, flexDirection: 'column', gap: 12, textAlign: 'center' }}>
-      {status === 'no_token' ? (
-        <>
-          <span style={eyebrow}>ALGOPACK</span>
-          <button type="button" style={primaryBtn} onClick={onConnect}>
-            Подключить токен
-          </button>
-        </>
-      ) : null}
       {status === 'connecting' ? (
         <>
           <div
@@ -37,7 +27,7 @@ export function ChartState({
             }}
           />
           <span style={{ fontSize: 13, color: 'var(--color-muted-foreground, #5A6578)' }}>
-            Идёт подключение
+            Загрузка с Мосбиржи
           </span>
         </>
       ) : null}
@@ -45,15 +35,12 @@ export function ChartState({
         <>
           <span style={eyebrow}>Подписка</span>
           <p style={{ margin: 0, fontSize: 14 }}>Подписка ALGOPACK закончилась</p>
-          <button type="button" style={primaryBtn} onClick={onConnect}>
-            Сменить токен
-          </button>
         </>
       ) : null}
       {status === 'upstream_error' ? (
         <>
           <span style={eyebrow}>Сбой</span>
-          <p style={{ margin: 0, fontSize: 14 }}>Технический сбой. Данные сейчас недоступны</p>
+          <p style={{ margin: 0, fontSize: 14 }}>MOEX сейчас недоступен</p>
           <button type="button" style={secondaryBtn} onClick={onRetry}>
             Повторить
           </button>

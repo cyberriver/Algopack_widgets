@@ -1,3 +1,4 @@
+import { sessionWaveIndex } from '@/lib/chart-series';
 import { ASSET_NAMES, type SeriesPoint, type SnapshotBlock, type SnapshotResponse } from './types';
 
 function sessionTimes(date: string): string[] {
@@ -10,12 +11,13 @@ function sessionTimes(date: string): string[] {
   return out;
 }
 
-function metrics(base: number, i: number, sign: number) {
-  const wave = Math.sin(i / 9) * sign;
-  const posLong = Math.round(base + wave * 1600 + i * 6);
-  const posShort = Math.round(base * 0.72 - wave * 1100 + i * 3);
-  const posLongNum = Math.round(1800 + wave * 80 + i);
-  const posShortNum = Math.round(1400 - wave * 60 + i * 0.4);
+function metrics(base: number, w: number, sign: number) {
+  const slow = Math.sin(w / 52) * sign;
+  const step = Math.round(Math.sin(w / 95) * 5) * 420 * sign;
+  const posLong = Math.round(base + slow * 900 + step);
+  const posShort = Math.round(base * 0.52 - slow * 500 - step * 0.35);
+  const posLongNum = Math.round(2100 + slow * 50 + Math.round(Math.sin(w / 95) * 3) * 18);
+  const posShortNum = Math.round(950 - slow * 30);
   return {
     posLong,
     posShort,
@@ -28,12 +30,15 @@ function metrics(base: number, i: number, sign: number) {
 
 export function fixtureSeries(secid: string, date: string): SeriesPoint[] {
   const price0 = secid.toLowerCase() === 'si' ? 78.4 : 100;
-  return sessionTimes(date).map((ts, i) => ({
-    ts,
-    price: Number((price0 + Math.sin(i / 12) * 0.18 + i * 0.002).toFixed(4)),
-    fiz: metrics(42_000, i, 1),
-    yur: metrics(61_000, i, -1),
-  }));
+  return sessionTimes(date).map((ts, i) => {
+    const w = sessionWaveIndex(date, i);
+    return {
+      ts,
+      price: Number((price0 + Math.sin(w / 18) * 0.28 + Math.sin(w / 7) * 0.1).toFixed(4)),
+      fiz: metrics(42_000, w, 1),
+      yur: metrics(61_000, w, -1),
+    };
+  });
 }
 
 function blockFromPoint(ts: string, point: SeriesPoint): SnapshotBlock {

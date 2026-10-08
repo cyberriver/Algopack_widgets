@@ -36,7 +36,7 @@ npm run dev
 | GitHub Pages | `https://cyberriver.github.io/Algopack_widgets/` |
 | Модерация на стенде | тот же Pages URL |
 
-Pages — **статика**, без BFF. Обзор просит токен ALGOPACK и кладёт его в `localStorage` этой вкладки (как Finam Chart). Дальше браузер сам ходит на Мосбиржу. Если CORS закрыт — запасной ряд со сборки.
+Обзор сначала показывает поле токена ALGOPACK (как [Finam Chart](https://minakovmax.github.io/finam-chart/)). После «Подключиться» токен остаётся в этом браузере и графики грузятся с MOEX. В хост и топики токен не уходит.
 
 Чтобы выложить обзор:
 
@@ -54,6 +54,36 @@ npm run build:pages
 ```
 
 Каталог после деплоя: https://cyberriver.github.io/Algopack_widgets/
+
+## Docker на Ubuntu (REG.RU)
+
+Один контейнер: виджеты + BFF (`/api/futoi/*`). `ALGOPACK_TOKEN` только в `.env` на сервере.
+
+```bash
+# на чистой Ubuntu
+curl -fsSL https://get.docker.com | sh
+apt-get install -y docker-compose-plugin git
+git clone git@github.com:cyberriver/Algopack_widgets.git
+cd Algopack_widgets
+cp .env.example .env
+# впишите ALGOPACK_TOKEN
+chmod +x deploy/vps.sh
+./deploy/vps.sh
+```
+
+Каталог: `http://IP:3010`  
+Обзор: `http://IP:3010/widgets/dashboard`
+
+Когда появится домен, в `.env`:
+
+```
+DOMAIN=futoi.ваш-домен.ru
+ACME_EMAIL=вы@почта.ru
+```
+
+A-запись домена на IP VPS, порты 80 и 443 открыты, затем снова `./deploy/vps.sh`. Caddy сам возьмёт сертификат. В манифесте тогда `EMBED_PUBLIC_URL=https://futoi.ваш-домен.ru`.
+
+Обновление: `git pull && ./deploy/vps.sh`.
 
 ## Capabilities по умолчанию
 

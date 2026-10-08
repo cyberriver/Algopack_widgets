@@ -1,4 +1,4 @@
-import { fixtureSeries, fixtureSnapshot } from './fixture';
+import https from 'node:https';
 import { MoexError, statusFromHttp } from './errors';
 import {
   ASSET_NAMES,
@@ -23,12 +23,12 @@ const cache = new Map<string, CacheEntry<unknown>>();
 const CACHE_MS = 45_000;
 const g = globalThis as typeof globalThis & { __futoiDownUntil?: number };
 
-function markUpstreamDown(): void {
-  g.__futoiDownUntil = Date.now() + 60_000;
+export function clearUpstreamDown(): void {
+  g.__futoiDownUntil = 0;
 }
 
 function upstreamDown(): boolean {
-  return Date.now() < (g.__futoiDownUntil ?? 0);
+  return false;
 }
 
 let requestBearer = '';
@@ -53,15 +53,44 @@ function addDays(iso: string, days: number): string {
 
 export function lookbackRange(lookback: Lookback | undefined, sessionDate?: string): { from: string; to: string } {
   const to = sessionDate && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : todayISO();
+  if (lookback === '60d') return { from: addDays(to, -60), to };
   if (lookback === '20d') return { from: addDays(to, -20), to };
   if (lookback === '5d') return { from: addDays(to, -5), to };
   return { from: to, to };
 }
 
+/** Corp TLS inspection: Node CA store rejects MOEX, the browser does not. */
+function fetchMoex(url: string, headers: Record<string, string>): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      { method: 'GET', headers, rejectUnauthorized: false, timeout: 12_000 },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          resolve(
+            new Response(Buffer.concat(chunks), {
+              status: res.statusCode ?? 502,
+              headers: { 'content-type': res.headers['content-type'] ?? 'application/json' },
+            }),
+          );
+        });
+      },
+    );
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('moex timeout'));
+    });
+    req.end();
+  });
+}
+
 async function fetchJson(url: string, auth: boolean): Promise<unknown> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (auth && token()) headers.Authorization = `Bearer ${token()}`;
-  const res = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(8000) });
+  const res = await fetchMoex(url, headers);
   if (!res.ok) {
     throw new MoexError(statusFromHttp(res.status), `upstream ${res.status}`);
   }
@@ -81,7 +110,12 @@ function tableFromIss(payload: unknown, candidates: string[]): { columns: string
     const columns = inner.columns;
     const data = inner.data;
     if (Array.isArray(columns) && Array.isArray(data)) {
-      return { columns: columns.map(String), data: data as unknown[][] };
+      const cols = columns.map(String);
+      if (cols.length === 1 && cols[0].toLowerCase() === 'error_message') {
+        const message = data[0] != null ? String((data[0] as unknown[])[0] ?? 'futoi error') : 'futoi error';
+        throw new MoexError('upstream_error', message);
+      }
+      return { columns: cols, data: data as unknown[][] };
     }
   }
   return null;
@@ -133,13 +167,18 @@ function parseFutoiTable(table: { columns: string[]; data: unknown[][] }): Futoi
       tradedate: str(iDate >= 0 ? line[iDate] : ''),
       tradetime: str(iTime >= 0 ? line[iTime] : ''),
       clgroup: group,
-      posLong: num(line[iLong]),
-      posShort: num(line[iShort]),
+      posLong: Math.abs(num(line[iLong])),
+      posShort: Math.abs(num(line[iShort])),
       posLongNum: iLongN >= 0 ? num(line[iLongN]) : 0,
       posShortNum: iShortN >= 0 ? num(line[iShortN]) : 0,
     });
   }
   return rows;
+}
+
+function minuteKey(ts: string): string {
+  const m = ts.replace(' ', 'T').match(/(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}T${m[2]}:${m[3]}` : '';
 }
 
 function parsePriceTable(table: { columns: string[]; data: unknown[][] }): PricePoint[] {
@@ -152,10 +191,10 @@ function parsePriceTable(table: { columns: string[]; data: unknown[][] }): Price
     .map((line) => {
       const date = iBegin >= 0 ? str(line[iBegin]) : '';
       const time = iTime >= 0 ? str(line[iTime]) : '';
-      const ts = time && date && !date.includes(':') ? `${date}T${time}` : date;
-      return { ts, price: num(line[iClose]) };
+      const raw = time && date && !date.includes(':') ? `${date}T${time}` : date.replace(' ', 'T');
+      return { ts: raw, price: num(line[iClose]) };
     })
-    .filter((p) => p.ts && p.price > 0);
+    .filter((p) => minuteKey(p.ts) && p.price > 0);
 }
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -166,18 +205,24 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   return value;
 }
 
+function futoiSecuritiesPath(secid?: string): string {
+  const suffix = secid ? `/${encodeURIComponent(secid)}` : '';
+  return `/iss/analyticalproducts/futoi/securities${suffix}.json`;
+}
+
 async function loadFutoiDay(date: string, secid?: string): Promise<FutoiRow[]> {
-  const q = new URLSearchParams({
-    'iss.meta': 'off',
-    date,
-  });
-  const path = secid ? `fo/futoi/${encodeURIComponent(secid)}.json` : 'fo/futoi.json';
+  const q = new URLSearchParams({ 'iss.meta': 'off' });
+  if (secid) {
+    q.set('from', date);
+    q.set('till', date);
+  } else {
+    q.set('date', date);
+  }
+  const path = futoiSecuritiesPath(secid);
   const urls = [
-    { url: `${APIM}/iss/datashop/algopack/${path}?${q}`, auth: true },
-    {
-      url: `${ISS}/iss/analyticalproducts/futoi/securities${secid ? `/${encodeURIComponent(secid)}` : ''}.json?${q}`,
-      auth: false,
-    },
+    { url: `${APIM}${path}?${q}`, auth: true },
+    { url: `${ISS}${path}?${q}`, auth: true },
+    { url: `${ISS}${path}?${q}`, auth: false },
   ];
   let last: unknown;
   for (const u of urls) {
@@ -197,42 +242,139 @@ async function loadFutoiDay(date: string, secid?: string): Promise<FutoiRow[]> {
     }
   }
   if (last instanceof MoexError) throw last;
-  if (last) {
-    markUpstreamDown();
-    throw new MoexError('upstream_error', 'moex unreachable');
-  }
+  if (last) throw new MoexError('upstream_error', 'moex unreachable');
   return [];
 }
 
-async function loadPrices(secid: string, from: string, to: string): Promise<PricePoint[]> {
+function contractPoints(price: number): number {
+  if (price <= 0) return price;
+  return price < 1000 ? Math.round(price * 1000) : price;
+}
+
+function isAssetFuture(secid: string, assetCode: string, asset: string): boolean {
+  const a = asset.toUpperCase();
+  if (assetCode.toUpperCase() === a) return true;
+  return new RegExp(`^${a}[FGHJKMNQUVXZ]\\d{1,2}$`, 'i').test(secid);
+}
+
+async function resolveFrontMonth(asset: string): Promise<string> {
+  return cached(`front:${asset}`, async () => {
+    const q = new URLSearchParams({
+      'iss.meta': 'off',
+      'iss.only': 'securities,marketdata',
+      'securities.columns': 'SECID,ASSETCODE,LASTDELDATE,STATUS',
+      'marketdata.columns': 'SECID,LAST',
+    });
+    const urls = [
+      `${ISS}/iss/engines/futures/markets/forts/securities.json?${q}`,
+      `${APIM}/iss/engines/futures/markets/forts/securities.json?${q}`,
+    ];
+    for (const url of urls) {
+      try {
+        const json = await fetchJson(url, url.startsWith(APIM));
+        const table = tableFromIss(json, ['securities']);
+        const md = tableFromIss(json, ['marketdata']);
+        if (!table) continue;
+        const lastBySec = new Map<string, number>();
+        if (md) {
+          const iSec = colIndex(md.columns, ['secid']);
+          const iLast = colIndex(md.columns, ['last']);
+          for (const line of md.data) {
+            const id = str(iSec >= 0 ? line[iSec] : '');
+            const last = iLast >= 0 ? num(line[iLast]) : 0;
+            if (id && last > 0) lastBySec.set(id, last);
+          }
+        }
+        const iSec = colIndex(table.columns, ['secid']);
+        const iAsset = colIndex(table.columns, ['assetcode', 'asset']);
+        const iExp = colIndex(table.columns, ['lastdeldate', 'lasttradedate']);
+        const iStat = colIndex(table.columns, ['status']);
+        const today = todayISO();
+        const matches = table.data
+          .map((line) => {
+            const secid = str(iSec >= 0 ? line[iSec] : '');
+            return {
+              secid,
+              asset: str(iAsset >= 0 ? line[iAsset] : ''),
+              exp: str(iExp >= 0 ? line[iExp] : '9999-12-31'),
+              status: str(iStat >= 0 ? line[iStat] : ''),
+              last: lastBySec.get(secid) ?? 0,
+            };
+          })
+          .filter((r) => isAssetFuture(r.secid, r.asset, asset))
+          .filter((r) => r.status === '' || r.status === 'A' || r.status === 'T')
+          .filter((r) => !r.exp || r.exp >= today)
+          .sort((a, b) => {
+            if (a.last > 0 !== b.last > 0) return a.last > 0 ? -1 : 1;
+            return a.exp.localeCompare(b.exp);
+          });
+        if (matches[0]?.secid) return matches[0].secid;
+      } catch {
+        // next
+      }
+    }
+    return asset;
+  });
+}
+
+async function loadLastPrice(front: string): Promise<number | null> {
   const q = new URLSearchParams({
     'iss.meta': 'off',
-    from,
-    till: to,
-    interval: '5',
+    'iss.only': 'marketdata',
+    'marketdata.columns': 'SECID,LAST',
   });
   const urls = [
-    {
-      url: `${APIM}/iss/datashop/algopack/fo/tradestats/${encodeURIComponent(secid)}.json?${q}`,
-      auth: true,
-    },
-    {
-      url: `${ISS}/iss/engines/futures/markets/forts/securities/${encodeURIComponent(secid)}/candles.json?${q}`,
-      auth: false,
-    },
+    `${ISS}/iss/engines/futures/markets/forts/securities/${encodeURIComponent(front)}.json?${q}`,
+    `${APIM}/iss/engines/futures/markets/forts/securities/${encodeURIComponent(front)}.json?${q}`,
   ];
-  for (const u of urls) {
+  for (const url of urls) {
     try {
-      const json = await fetchJson(u.url, u.auth);
-      const table = tableFromIss(json, ['candles', 'tradestats', 'data']);
+      const json = await fetchJson(url, url.startsWith(APIM));
+      const table = tableFromIss(json, ['marketdata']);
       if (!table) continue;
-      const points = parsePriceTable(table);
-      if (points.length) return points;
+      const iLast = colIndex(table.columns, ['last']);
+      if (iLast < 0 || !table.data[0]) continue;
+      const last = contractPoints(num(table.data[0][iLast]));
+      if (last > 0) return last;
     } catch {
       // next
     }
   }
-  return [];
+  return null;
+}
+
+async function loadPrices(secid: string, from: string, to: string): Promise<PricePoint[]> {
+  const front = await resolveFrontMonth(secid);
+  const q = new URLSearchParams({
+    'iss.meta': 'off',
+    from,
+    till: to,
+    interval: '10',
+  });
+  const urls = [
+    { url: `${ISS}/iss/engines/futures/markets/forts/securities/${encodeURIComponent(front)}/candles.json?${q}`, auth: false },
+    { url: `${APIM}/iss/engines/futures/markets/forts/securities/${encodeURIComponent(front)}/candles.json?${q}`, auth: true },
+  ];
+  let points: PricePoint[] = [];
+  for (const u of urls) {
+    try {
+      const json = await fetchJson(u.url, u.auth);
+      const table = tableFromIss(json, ['candles', 'data']);
+      if (!table) continue;
+      points = parsePriceTable(table).map((p) => ({ ...p, price: contractPoints(p.price) }));
+      if (points.length) break;
+    } catch {
+      // next
+    }
+  }
+  const last = await loadLastPrice(front);
+  if (last && points.length) {
+    const tail = points[points.length - 1];
+    points[points.length - 1] = { ...tail, price: last };
+  } else if (last && !points.length) {
+    points = [{ ts: `${to}T23:30:00`, price: last }];
+  }
+  return points;
 }
 
 function rowTs(row: FutoiRow): string {
@@ -295,9 +437,11 @@ function closePair(rows: FutoiRow[]): { fiz?: FutoiRow; yur?: FutoiRow } {
 }
 
 export async function probeToken(bearer: string): Promise<'ok' | 'subscription_expired' | 'upstream_error'> {
-  const q = new URLSearchParams({ 'iss.meta': 'off', date: todayISO() });
+  const day = todayISO();
+  const q = new URLSearchParams({ 'iss.meta': 'off', from: day, till: day });
+  setRequestBearer(bearer);
   try {
-    await fetchJson(`${APIM}/iss/datashop/algopack/fo/futoi.json?${q}`, true);
+    await fetchJson(`${APIM}${futoiSecuritiesPath('Si')}?${q}`, true);
     return 'ok';
   } catch (err) {
     if (err instanceof MoexError) return err.kind === 'subscription_expired' ? 'subscription_expired' : 'upstream_error';
@@ -321,7 +465,6 @@ export async function getUniverse(): Promise<UniverseItem[]> {
         assetName: ASSET_NAMES[secid] ?? secid,
       }));
     } catch {
-      markUpstreamDown();
       return DEFAULT_UNIVERSE.map((secid) => ({ secid, assetName: ASSET_NAMES[secid] ?? secid }));
     }
   });
@@ -331,14 +474,26 @@ export function isKnownSecid(secid: string, universe: UniverseItem[]): boolean {
   return universe.some((u) => u.secid.toLowerCase() === secid.toLowerCase());
 }
 
-async function buildSeries(secid: string, from: string, to: string): Promise<SeriesPoint[]> {
+async function buildSeries(
+  secid: string,
+  from: string,
+  to: string,
+  opts: { skipPrices?: boolean } = {},
+): Promise<SeriesPoint[]> {
   const dates: string[] = [];
   for (let d = from; d <= to; d = addDays(d, 1)) dates.push(d);
   const rows = (
     await Promise.all(dates.map((date) => cached(`futoi:${secid}:${date}`, () => loadFutoiDay(date, secid))))
   ).flat();
-  const prices = await cached(`px:${secid}:${from}:${to}`, () => loadPrices(secid, from, to));
-  const priceByTs = new Map(prices.map((p) => [p.ts.slice(0, 16), p.price]));
+  let prices: PricePoint[] = [];
+  if (!opts.skipPrices) {
+    try {
+      prices = await cached(`px:${secid}:${from}:${to}`, () => loadPrices(secid, from, to));
+    } catch {
+      prices = [];
+    }
+  }
+  const priceByTs = new Map(prices.map((p) => [minuteKey(p.ts), p.price]));
 
   const byTs = new Map<string, { fiz?: FutoiRow; yur?: FutoiRow }>();
   for (const row of rows) {
@@ -351,18 +506,18 @@ async function buildSeries(secid: string, from: string, to: string): Promise<Ser
 
   const points: SeriesPoint[] = [];
   for (const [ts, slot] of [...byTs.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const hhmm = ts.slice(11, 16);
+    if (hhmm === '23:40' || hhmm === '23:50') continue;
     points.push({
       ts,
-      price: priceByTs.get(ts.slice(0, 16)) ?? null,
+      price: priceByTs.get(minuteKey(ts)) ?? null,
       fiz: slot.fiz ? metricsFromRow(slot.fiz) : emptyMetrics(),
       yur: slot.yur ? metricsFromRow(slot.yur) : emptyMetrics(),
     });
   }
-  if (points.length && points.every((p) => p.price == null) && prices.length) {
-    for (const p of points) {
-      const hit = prices.find((x) => x.ts.slice(0, 10) === p.ts.slice(0, 10));
-      if (hit) p.price = hit.price;
-    }
+  if (points.length && prices.length) {
+    const lastPx = prices[prices.length - 1]?.price;
+    if (lastPx && points[points.length - 1].price == null) points[points.length - 1].price = lastPx;
   }
   return points;
 }
@@ -377,54 +532,49 @@ async function lastSessionWithRows(secid: string, start: string): Promise<string
   return null;
 }
 
-export async function getSnapshot(secid: string): Promise<SnapshotResponse> {
+export async function getSnapshot(secid: string, opts: { quick?: boolean } = {}): Promise<SnapshotResponse> {
   const to = todayISO();
-  if (upstreamDown()) return fixtureSnapshot(secid, to);
-  try {
-    const session = (await lastSessionWithRows(secid, to)) ?? to;
-    const prev = addDays(session, -1);
-    const [todayRows, yRows] = await Promise.all([
-      cached(`futoi:${secid}:${session}`, () => loadFutoiDay(session, secid)),
-      cached(`futoi:${secid}:${prev}`, () => loadFutoiDay(prev, secid)),
-    ]);
-    const pair = latestPair(todayRows);
-    const cur = toBlock(pair.fiz, pair.yur);
-    if (cur) {
-      const prevPair = closePair(yRows);
-      const previousClose = toBlock(prevPair.fiz, prevPair.yur);
-      return {
-        secid,
-        assetName: ASSET_NAMES[secid] ?? secid,
-        current: cur,
-        previousClose,
-        deltaContracts: previousClose ? minusBlock(cur, previousClose) : null,
-        deltaPersons: previousClose ? minusBlock(cur, previousClose) : null,
-      };
-    }
-  } catch (err) {
-    if (err instanceof MoexError && err.kind === 'subscription_expired') throw err;
-  }
-  return fixtureSnapshot(secid, to);
+  if (upstreamDown()) throw new MoexError('upstream_error', 'moex marked down');
+  const session = opts.quick ? to : ((await lastSessionWithRows(secid, to)) ?? to);
+  const prev = addDays(session, -1);
+  const [todayRows, yRows] = await Promise.all([
+    cached(`futoi:${secid}:${session}`, () => loadFutoiDay(session, secid)),
+    opts.quick
+      ? Promise.resolve([] as FutoiRow[])
+      : cached(`futoi:${secid}:${prev}`, () => loadFutoiDay(prev, secid)),
+  ]);
+  const pair = latestPair(todayRows);
+  const cur = toBlock(pair.fiz, pair.yur);
+  if (!cur) throw new MoexError('upstream_error', 'empty futoi snapshot');
+  const prevPair = closePair(yRows);
+  const previousClose = toBlock(prevPair.fiz, prevPair.yur);
+  return {
+    secid,
+    assetName: ASSET_NAMES[secid] ?? secid,
+    current: cur,
+    previousClose,
+    deltaContracts: previousClose ? minusBlock(cur, previousClose) : null,
+    deltaPersons: previousClose ? minusBlock(cur, previousClose) : null,
+  };
 }
 
 export async function getSeries(
   secid: string,
   from: string,
   to: string,
+  opts: { quick?: boolean } = {},
 ): Promise<{ points: SeriesPoint[]; stale?: boolean }> {
-  if (upstreamDown()) return { points: fixtureSeries(secid, to), stale: true };
-  try {
-    const points = await buildSeries(secid, from, to);
-    if (points.length) return { points };
+  if (upstreamDown()) throw new MoexError('upstream_error', 'moex marked down');
+  const points = await buildSeries(secid, from, to, { skipPrices: false });
+  if (points.length) return { points };
+  if (!opts.quick) {
     const session = await lastSessionWithRows(secid, to);
     if (session) {
       const fallback = await buildSeries(secid, session, session);
       if (fallback.length) return { points: fallback };
     }
-  } catch (err) {
-    if (err instanceof MoexError && err.kind === 'subscription_expired') throw err;
   }
-  return { points: fixtureSeries(secid, to), stale: true };
+  return { points: [] };
 }
 
 export function assetName(secid: string): string {

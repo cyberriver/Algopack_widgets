@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ExtensionBridge } from '@finamx/extension-sdk';
 import {
   DEFAULT_SECID,
@@ -23,14 +23,17 @@ export function useFutoiFilter(
   unsupported: string | null;
   setSecid: (secid: string) => void;
   setLookback: (lookback: Lookback) => void;
+  setSessionDate: (sessionDate: string) => void;
 } {
   const [filter, setFilter] = useState<FutoiFilterPayload>({
     secid: DEFAULT_SECID,
-    lookback: 'session',
+    lookback: '5d',
   });
   const [unsupported, setUnsupported] = useState<string | null>(null);
   const universe = opts.universe;
   const canPublish = opts.publish ?? false;
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
 
   const known = useCallback(
     (secid: string) =>
@@ -41,14 +44,13 @@ export function useFutoiFilter(
   const apply = useCallback(
     (next: FutoiFilterPayload, publishIt: boolean) => {
       setFilter(next);
-      if (publishIt && bridge) {
-        bridge.context.publish(FILTER_TOPIC, next);
-        bridge.context.publish('fdc3.instrument', {
-          type: 'fdc3.instrument',
-          id: { ticker: next.secid },
-          name: next.assetName,
-        });
-      }
+      if (!publishIt || !bridge) return;
+      bridge.context.publish(FILTER_TOPIC, next);
+      bridge.context.publish('fdc3.instrument', {
+        type: 'fdc3.instrument',
+        id: { ticker: next.secid },
+        name: next.assetName,
+      });
     },
     [bridge],
   );
@@ -58,29 +60,33 @@ export function useFutoiFilter(
     const unsubFilter = bridge.context.subscribe(FILTER_TOPIC, (payload) => {
       const p = payload as FutoiFilterPayload;
       if (!p?.secid) return;
+      if (p.secid === filterRef.current.secid && p.lookback === filterRef.current.lookback && p.sessionDate === filterRef.current.sessionDate) {
+        return;
+      }
       setUnsupported(null);
       setFilter({
         secid: p.secid,
         assetName: p.assetName,
         sessionDate: p.sessionDate,
-        lookback: p.lookback ?? 'session',
+        lookback: p.lookback ?? '5d',
       });
     });
     const unsubInst = bridge.context.subscribe('fdc3.instrument', (payload) => {
       const ticker = (payload as HostInstrument | null)?.id?.ticker?.trim();
       if (!ticker) return;
+      if (ticker.toLowerCase() === filterRef.current.secid.toLowerCase()) return;
       if (!known(ticker)) {
         setUnsupported(ticker);
         return;
       }
       setUnsupported(null);
-      const next = { ...filter, secid: ticker };
-      apply(next, canPublish);
+      apply({ ...filterRef.current, secid: ticker }, false);
     });
     const unsubTf = bridge.context.subscribe('finamx.timeframe', (payload) => {
       const tf = payload as { from?: string; to?: string };
       if (!tf?.from && !tf?.to) return;
       const sessionDate = tf.to?.slice(0, 10) || tf.from?.slice(0, 10);
+      if (!sessionDate || sessionDate === filterRef.current.sessionDate) return;
       setFilter((prev) => ({ ...prev, sessionDate }));
     });
     return () => {
@@ -88,20 +94,27 @@ export function useFutoiFilter(
       unsubInst();
       unsubTf();
     };
-  }, [bridge, apply, canPublish, filter, known]);
+  }, [bridge, apply, known]);
 
   const setSecid = (secid: string) => {
+    if (secid.toLowerCase() === filterRef.current.secid.toLowerCase()) return;
     const item = universe.find((u) => u.secid.toLowerCase() === secid.toLowerCase());
     apply(
-      { ...filter, secid, assetName: item?.assetName, lookback: filter.lookback ?? 'session' },
+      { ...filterRef.current, secid, assetName: item?.assetName, lookback: filterRef.current.lookback ?? '5d' },
       true,
     );
     setUnsupported(null);
   };
 
   const setLookback = (lookback: Lookback) => {
-    apply({ ...filter, lookback }, canPublish);
+    if (lookback === filterRef.current.lookback) return;
+    apply({ ...filterRef.current, lookback }, canPublish);
   };
 
-  return { filter, unsupported, setSecid, setLookback };
+  const setSessionDate = (sessionDate: string) => {
+    if (sessionDate === filterRef.current.sessionDate) return;
+    apply({ ...filterRef.current, sessionDate }, canPublish);
+  };
+
+  return { filter, unsupported, setSecid, setLookback, setSessionDate };
 }

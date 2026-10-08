@@ -78,8 +78,8 @@ function parseFutoiTable(table: { columns: string[]; data: unknown[][] }): Futoi
       tradedate: str(iDate >= 0 ? line[iDate] : ''),
       tradetime: str(iTime >= 0 ? line[iTime] : ''),
       clgroup: group,
-      posLong: num(line[iLong]),
-      posShort: num(line[iShort]),
+      posLong: Math.abs(num(line[iLong])),
+      posShort: Math.abs(num(line[iShort])),
       posLongNum: iLongN >= 0 ? num(line[iLongN]) : 0,
       posShortNum: iShortN >= 0 ? num(line[iShortN]) : 0,
     });
@@ -90,7 +90,7 @@ function parseFutoiTable(table: { columns: string[]; data: unknown[][] }): Futoi
 async function fetchJson(url: string, token?: string): Promise<unknown> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(6_000) });
   if (res.status === 401 || res.status === 403) {
     const err = new Error('subscription_expired');
     err.name = 'MoexAuth';
@@ -102,15 +102,14 @@ async function fetchJson(url: string, token?: string): Promise<unknown> {
 
 async function loadDay(date: string, secid: string, token: string): Promise<FutoiRow[]> {
   const q = new URLSearchParams({ 'iss.meta': 'off', date });
+  const path = `/iss/analyticalproducts/futoi/securities/${encodeURIComponent(secid)}.json`;
   const urls: Array<{ url: string; auth: boolean }> = [];
   if (token) {
-    urls.push({ url: `${APIM}/iss/datashop/algopack/fo/futoi/${encodeURIComponent(secid)}.json?${q}`, auth: true });
+    urls.push({ url: `${APIM}${path}?${q}`, auth: true });
   }
-  urls.push({
-    url: `${ISS}/iss/analyticalproducts/futoi/securities/${encodeURIComponent(secid)}.json?${q}`,
-    auth: false,
-  });
+  urls.push({ url: `${ISS}${path}?${q}`, auth: false });
   let authFail = false;
+  let networkFail = false;
   for (const item of urls) {
     try {
       const json = await fetchJson(item.url, item.auth ? token : undefined);
@@ -120,11 +119,17 @@ async function loadDay(date: string, secid: string, token: string): Promise<Futo
       if (rows.length) return rows;
     } catch (err) {
       if (err instanceof Error && err.name === 'MoexAuth') authFail = true;
+      else networkFail = true;
     }
   }
   if (authFail) {
     const err = new Error('subscription_expired');
     err.name = 'MoexAuth';
+    throw err;
+  }
+  if (networkFail) {
+    const err = new Error('cors_or_network');
+    err.name = 'MoexNet';
     throw err;
   }
   return [];
@@ -185,8 +190,7 @@ function toPoints(rows: FutoiRow[]): SeriesPoint[] {
 
 export async function probeBrowserToken(token: string): Promise<'ok' | 'subscription_expired' | 'cors_or_network'> {
   try {
-    const rows = await loadDay(todayISO(), 'Si', token);
-    if (rows.length) return 'ok';
+    await loadDay(todayISO(), 'Si', token);
     return 'ok';
   } catch (err) {
     if (err instanceof Error && err.name === 'MoexAuth') return 'subscription_expired';
@@ -194,13 +198,29 @@ export async function probeBrowserToken(token: string): Promise<'ok' | 'subscrip
   }
 }
 
-export async function loadBrowserSeries(
+export async function loadBrowserDay(
   secid: string,
+  date: string,
   token: string,
 ): Promise<{ points: SeriesPoint[]; error?: BrowserLoadError }> {
   try {
+    const points = toPoints(await loadDay(date, secid, token));
+    return points.length ? { points } : { points: [], error: 'empty' };
+  } catch (err) {
+    if (err instanceof Error && err.name === 'MoexAuth') return { points: [], error: 'subscription_expired' };
+    return { points: [], error: 'cors_or_network' };
+  }
+}
+
+export async function loadBrowserSeries(
+  secid: string,
+  token: string,
+  opts: { walkDays?: number } = {},
+): Promise<{ points: SeriesPoint[]; error?: BrowserLoadError }> {
+  const walk = opts.walkDays ?? 1;
+  try {
     let date = todayISO();
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < walk; i += 1) {
       const rows = await loadDay(date, secid, token);
       const points = toPoints(rows);
       if (points.length) return { points };
@@ -216,10 +236,12 @@ export async function loadBrowserSeries(
 export async function loadBrowserSnapshot(
   secid: string,
   token: string,
+  opts: { walkDays?: number } = {},
 ): Promise<{ snapshot: SnapshotResponse | null; error?: BrowserLoadError }> {
+  const walk = opts.walkDays ?? 1;
   try {
     let date = todayISO();
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < walk; i += 1) {
       const rows = await loadDay(date, secid, token);
       const pair = latestPair(rows);
       const current = toBlock(pair.fiz, pair.yur);

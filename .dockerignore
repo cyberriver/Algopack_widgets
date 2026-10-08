@@ -1,0 +1,17 @@
+.git
+.github
+.next
+out
+dist
+node_modules
+.api-tmp
+.env
+.env.*
+!.env.example
+*.md
+*.log
+*.tsbuildinfo
+public/data/series-*.json
+public/data/snapshot-*.json
+public/data/universe.json
+deploy

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,9 +42,20 @@ function topics(publishes, subscribes) {
   return result;
 }
 
+async function pageSha256(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`cannot hash ${url} (${res.status})`);
+  return createHash('sha256').update(Buffer.from(await res.arrayBuffer())).digest('hex');
+}
+
 mkdirSync(outDir, { recursive: true });
 
+const pin = bundle.startsWith('https://');
+
 for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
+  const embedEntryPath = `/widgets/${slug}${entrySuffix}`;
+  const pageUrl = new URL(embedEntryPath, bundle).href;
+  const integrity = pin ? { bundleSha256: await pageSha256(pageUrl) } : undefined;
   const manifest = {
     extensionId: `com.finamx.algopack.futoi.${slug}`,
     displayName: title,
@@ -52,14 +64,15 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
     platformSupport: ['web'],
     versions: [
       {
-        version: '1.0.1',
-        changelog: 'Algopack_widgets: external pull, localhost bundle, default capabilities',
+        version: '1.0.3',
+        changelog: 'BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)',
         capabilitiesRequested: ['user.profile.read', 'ui.toast'],
+        ...(integrity ? { integrity } : {}),
         surfaces: {
           ui: {
             renderMode: 'external-embed',
             embedBundleUrl: bundle,
-            embedEntryPath: `/widgets/${slug}${entrySuffix}`,
+            embedEntryPath,
             embedSandbox: 'allow-scripts allow-popups',
           },
           topics: topics(publishes, subscribes),
@@ -71,4 +84,4 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
 }
 
 copyFileSync(join(outDir, 'dashboard.json'), join(root, 'manifest.json'));
-console.log(`wrote ${WIDGETS.length} manifests → ${bundle}`);
+console.log(`wrote ${WIDGETS.length} manifests → ${bundle}${pin ? ' (sha256 pinned)' : ''}`);

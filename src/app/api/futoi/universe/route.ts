@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getUniverse } from '@/lib/moex';
+import { ASSET_NAMES, DEFAULT_UNIVERSE } from '@/lib/types';
 
 export async function GET() {
-  try {
-    return NextResponse.json({ items: await getUniverse() });
-  } catch (err) {
-    return NextResponse.json(
-      { error: 'universe_failed', message: err instanceof Error ? err.message : 'error' },
-      { status: 502 },
-    );
-  }
+  return NextResponse.json({
+    items: DEFAULT_UNIVERSE.map((secid) => ({ secid, assetName: ASSET_NAMES[secid] ?? secid })),
+  });
 }

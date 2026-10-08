@@ -1,7 +1,8 @@
 export const EXTENSION_PREFIX = 'com.finamx.algopack.futoi';
 export const FILTER_TOPIC = 'com.finamx.algopack.futoi.filter';
 export const DEFAULT_SECID = 'Si';
-export const POLL_MS = 5 * 60 * 1000;
+export const POLL_MS = 10 * 60 * 1000;
+export const HISTORY_FLOOR = '2019-01-01';
 
 export const DEFAULT_UNIVERSE = ['Si', 'BR', 'RI', 'GD', 'CR', 'GZ', 'NG', 'SV'] as const;
 
@@ -16,7 +17,7 @@ export const ASSET_NAMES: Record<string, string> = {
   SV: 'Серебро',
 };
 
-export type Lookback = 'session' | '5d' | '20d';
+export type Lookback = 'session' | '5d' | '20d' | '60d';
 export type ClGroup = 'FIZ' | 'YUR';
 export type TokenStatus = 'no_token' | 'connecting' | 'ok' | 'subscription_expired' | 'upstream_error';
 
@@ -93,6 +94,13 @@ export type SeriesResponse = {
 
 export type UniverseItem = { secid: string; assetName: string };
 
+export type LoadProgress = {
+  current?: string;
+  done: number;
+  total: number;
+  etaSec: number;
+};
+
 export type WidgetSlug =
   | 'filter'
   | 'table'
@@ -141,12 +149,14 @@ export function emptyMetrics(): GroupMetrics {
 }
 
 export function metricsFromRow(row: FutoiRow): GroupMetrics {
+  const posLong = Math.abs(row.posLong);
+  const posShort = Math.abs(row.posShort);
   return {
-    posLong: row.posLong,
-    posShort: row.posShort,
+    posLong,
+    posShort,
     posLongNum: row.posLongNum,
     posShortNum: row.posShortNum,
-    openInterest: row.posLong + row.posShort,
-    directed: row.posLong - row.posShort,
+    openInterest: posLong + posShort,
+    directed: posLong - posShort,
   };
 }

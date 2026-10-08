@@ -3,6 +3,7 @@ import { DEFAULT_SECID } from '@/lib/types';
 import { withBearer } from '@/lib/with-bearer';
 
 export async function GET(request: Request) {
-  const secid = new URL(request.url).searchParams.get('secid')?.trim() || DEFAULT_SECID;
-  return withBearer(() => getSnapshot(secid));
+  const q = new URL(request.url).searchParams;
+  const secid = q.get('secid')?.trim() || DEFAULT_SECID;
+  return withBearer(request, () => getSnapshot(secid, { quick: q.get('quick') === '1' }));
 }

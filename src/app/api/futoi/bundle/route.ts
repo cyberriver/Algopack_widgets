@@ -9,8 +9,12 @@ export async function GET(request: Request) {
   const range = lookbackRange(lookback, q.get('sessionDate') ?? undefined);
   const from = q.get('from') ?? range.from;
   const to = q.get('to') ?? range.to;
-  return withBearer(async () => {
-    const [snapshot, series] = await Promise.all([getSnapshot(secid), getSeries(secid, from, to)]);
+  const quick = q.get('quick') === '1';
+  return withBearer(request, async () => {
+    const [snapshot, series] = await Promise.all([
+      getSnapshot(secid, { quick }),
+      getSeries(secid, from, to, { quick }),
+    ]);
     return { snapshot, series: { secid, ...series } };
   });
 }

@@ -1,31 +1,41 @@
 const KEY = 'com.finamx.algopack.futoi.token';
 
-function store(): Storage | null {
+export function readLocalToken(): string {
+  if (typeof window === 'undefined') return '';
   try {
-    return window.localStorage;
+    return (window.localStorage.getItem(KEY) || window.sessionStorage.getItem(KEY) || '').trim();
   } catch {
-    try {
-      return window.sessionStorage;
-    } catch {
-      return null;
-    }
+    return '';
   }
 }
 
-export function readLocalToken(): string {
-  if (typeof window === 'undefined') return '';
-  return store()?.getItem(KEY)?.trim() ?? '';
-}
-
-export function writeLocalToken(token: string): boolean {
+export function writeLocalToken(token: string, remember = true): boolean {
+  if (typeof window === 'undefined') return false;
   const value = token.trim();
-  const s = store();
-  if (!s) return false;
-  if (value) s.setItem(KEY, value);
-  else s.removeItem(KEY);
-  return true;
+  try {
+    if (!value) {
+      window.localStorage.removeItem(KEY);
+      window.sessionStorage.removeItem(KEY);
+      return true;
+    }
+    if (remember) {
+      window.localStorage.setItem(KEY, value);
+      window.sessionStorage.removeItem(KEY);
+    } else {
+      window.sessionStorage.setItem(KEY, value);
+      window.localStorage.removeItem(KEY);
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function clearLocalToken(): void {
-  store()?.removeItem(KEY);
+  writeLocalToken('');
+}
+
+export function authHeaders(): HeadersInit {
+  const token = readLocalToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

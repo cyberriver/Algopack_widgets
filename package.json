@@ -1,6 +1,6 @@
 {
   "name": "algopack-widgets",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3010",

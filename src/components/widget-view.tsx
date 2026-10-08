@@ -12,7 +12,8 @@ import { ChartState } from './chart-state';
 import { FutoiChart, type ChartKind } from './futoi-chart';
 import { FutoiFilter } from './futoi-filter';
 import { FutoiTable } from './futoi-table';
-import { TokenModal } from './token-modal';
+import { LazyChart } from './lazy-chart';
+import { TokenBar } from './token-bar';
 import { hint, page } from './styles';
 
 function paneStatus(
@@ -22,9 +23,10 @@ function paneStatus(
   hasData: boolean,
 ): TokenStatus {
   if (token === 'no_token' || token === 'subscription_expired' || token === 'connecting') return token;
+  if (hasData) return 'ok';
   if (error) return error;
-  if (loading && !hasData) return 'connecting';
-  return 'ok';
+  if (loading) return 'connecting';
+  return token;
 }
 
 function useShell(slug: WidgetSlug) {
@@ -44,40 +46,43 @@ function useShell(slug: WidgetSlug) {
 }
 
 function FilterWidget() {
-  const { rootRef, universe, filter, unsupported, setSecid, setLookback } = useShell('filter');
+  const { rootRef, universe, filter, unsupported, setSecid, setLookback, setSessionDate, token } = useShell('filter');
   return (
     <div ref={rootRef}>
-      {unsupported ? (
-        <p style={hint}>Для инструмента {unsupported} FUTOI нет</p>
-      ) : (
-        <FutoiFilter
-          secid={filter.secid}
-          universe={universe}
-          lookback={filter.lookback ?? 'session'}
-          onSecid={setSecid}
-          onLookback={setLookback}
-        />
-      )}
+      <TokenBar status={token.status} onConnect={token.connect} onDisconnect={token.disconnect} />
+      {token.ready ? (
+        unsupported ? (
+          <p style={hint}>Для инструмента {unsupported} FUTOI нет</p>
+        ) : (
+          <FutoiFilter
+            secid={filter.secid}
+            universe={universe}
+            lookback={filter.lookback ?? '5d'}
+            sessionDate={filter.sessionDate}
+            onSecid={setSecid}
+            onLookback={setLookback}
+            onSessionDate={setSessionDate}
+          />
+        )
+      ) : null}
     </div>
   );
 }
 
 function TableWidget() {
   const { rootRef, filter, unsupported, token } = useShell('table');
-  const enabled = token.status === 'ok';
-  const { data, loading, error, reload } = useFutoiSnapshot(filter.secid, enabled);
+  const { data, loading, error, reload } = useFutoiSnapshot(filter.secid, token.ready);
   const pane = paneStatus(token.status, loading, error, Boolean(data?.current));
   return (
     <div ref={rootRef}>
-      {unsupported ? (
-        <p style={hint}>Для инструмента {unsupported} FUTOI нет</p>
-      ) : (
+      <TokenBar status={token.status} onConnect={token.connect} onDisconnect={token.disconnect} />
+      {unsupported ? <p style={hint}>Для инструмента {unsupported} FUTOI нет</p> : null}
+      {token.ready ? (
         <>
-          <ChartState status={pane} onConnect={() => token.setOpen(true)} onRetry={reload} />
+          <ChartState status={pane === 'ok' ? 'ok' : pane} onRetry={reload} />
           {pane === 'ok' ? <FutoiTable data={data} /> : null}
         </>
-      )}
-      <TokenModal open={token.open} onClose={() => token.setOpen(false)} onSubmit={token.connect} />
+      ) : null}
     </div>
   );
 }
@@ -92,60 +97,87 @@ function ChartWidget({
   group: 'FIZ' | 'YUR';
 }) {
   const { rootRef, filter, unsupported, token } = useShell(slug);
-  const enabled = token.status === 'ok';
-  const { points, loading, error, stale, reload } = useFutoiSeries(filter, enabled);
-  const pane = paneStatus(token.status, loading, error, points.length > 0);
+  const { points, loading, loadingDays, progress, error, stale, reload, ensureRange, loadDay } = useFutoiSeries(
+    filter,
+    token.ready,
+  );
+  const hasSeries = points.length > 0 || loadingDays.length > 0;
+  const pane = paneStatus(token.status, loading, error, hasSeries);
   return (
     <div ref={rootRef}>
-      {unsupported ? (
-        <p style={hint}>Для инструмента {unsupported} FUTOI нет</p>
-      ) : (
+      <TokenBar status={token.status} onConnect={token.connect} onDisconnect={token.disconnect} />
+      {unsupported ? <p style={hint}>Для инструмента {unsupported} FUTOI нет</p> : null}
+      {token.ready ? (
         <>
-          <ChartState status={pane} onConnect={() => token.setOpen(true)} onRetry={reload} />
-          {pane === 'ok' ? <FutoiChart kind={kind} group={group} points={points} stale={stale} /> : null}
+          {hasSeries ? (
+            <FutoiChart
+              kind={kind}
+              group={group}
+              points={points}
+              stale={stale}
+              secid={filter.secid}
+              loadingDays={loadingDays}
+              progress={progress}
+              focusDate={filter.sessionDate}
+              onVisibleRange={ensureRange}
+              onNeedOlder={loadDay}
+            />
+          ) : (
+            <ChartState status={pane === 'ok' ? 'ok' : pane} onRetry={reload} />
+          )}
         </>
-      )}
-      <TokenModal open={token.open} onClose={() => token.setOpen(false)} onSubmit={token.connect} />
+      ) : null}
     </div>
   );
 }
 
 function DashboardWidget() {
-  const { rootRef, universe, filter, unsupported, setSecid, setLookback, token } = useShell('dashboard');
-  const enabled = token.status === 'ok';
-  const { snapshot, points, loading, error, stale, reload } = useFutoiBundle(filter, enabled);
-  const pane = paneStatus(token.status, loading, error, Boolean(snapshot?.current) || points.length > 0);
+  const { rootRef, universe, filter, unsupported, setSecid, setLookback, setSessionDate, token } = useShell('dashboard');
+  const { snapshot, points, loading, loadingDays, progress, error, stale, reload, ensureRange, loadDay } = useFutoiBundle(
+    filter,
+    token.ready,
+  );
+  const pane = paneStatus(
+    token.status,
+    loading,
+    error,
+    Boolean(snapshot?.current) || points.length > 0 || loadingDays.length > 0,
+  );
   return (
     <div ref={rootRef}>
-      {unsupported ? <p style={hint}>Для инструмента {unsupported} FUTOI нет</p> : null}
-      <FutoiFilter
-        secid={filter.secid}
-        universe={universe}
-        lookback={filter.lookback ?? 'session'}
-        onSecid={setSecid}
-        onLookback={setLookback}
-      />
-      {unsupported ? null : (
+      <TokenBar status={token.status} onConnect={token.connect} onDisconnect={token.disconnect} />
+      {token.ready ? (
         <>
-          <ChartState status={pane} onConnect={() => token.setOpen(true)} onRetry={reload} />
-          {pane === 'ok' ? (
+          {unsupported ? <p style={hint}>Для инструмента {unsupported} FUTOI нет</p> : null}
+          <FutoiFilter
+            secid={filter.secid}
+            universe={universe}
+            lookback={filter.lookback ?? '5d'}
+            sessionDate={filter.sessionDate}
+            progress={progress}
+            onSecid={setSecid}
+            onLookback={setLookback}
+            onSessionDate={setSessionDate}
+          />
+          {unsupported ? null : points.length > 0 || loadingDays.length > 0 ? (
             <>
-              <FutoiTable data={snapshot} />
+              {snapshot ? <FutoiTable data={snapshot} /> : null}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <FutoiChart kind="long-short" group="FIZ" points={points} stale={stale} />
-                <FutoiChart kind="long-short" group="YUR" points={points} stale={stale} />
-                <FutoiChart kind="persons" group="FIZ" points={points} stale={stale} />
-                <FutoiChart kind="persons" group="YUR" points={points} stale={stale} />
-                <FutoiChart kind="oi" group="FIZ" points={points} stale={stale} />
-                <FutoiChart kind="oi" group="YUR" points={points} stale={stale} />
-                <FutoiChart kind="directed" group="FIZ" points={points} stale={stale} />
-                <FutoiChart kind="directed" group="YUR" points={points} stale={stale} />
+                <LazyChart kind="long-short" group="FIZ" points={points} stale={stale} eager secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="long-short" group="YUR" points={points} stale={stale} eager secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="persons" group="FIZ" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="persons" group="YUR" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="oi" group="FIZ" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="oi" group="YUR" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="directed" group="FIZ" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
+                <LazyChart kind="directed" group="YUR" points={points} stale={stale} secid={filter.secid} loadingDays={loadingDays} progress={progress} focusDate={filter.sessionDate} onVisibleRange={ensureRange} onNeedOlder={loadDay} />
               </div>
             </>
-          ) : null}
+          ) : (
+            <ChartState status={pane === 'ok' ? 'ok' : pane} onRetry={reload} />
+          )}
         </>
-      )}
-      <TokenModal open={token.open} onClose={() => token.setOpen(false)} onSubmit={token.connect} />
+      ) : null}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { probeToken, setRequestBearer } from '@/lib/moex';
+import { clearUpstreamDown, probeToken, setRequestBearer } from '@/lib/moex';
 import { saveSessionToken } from '@/lib/token-store';
 
 export async function POST(request: Request) {
@@ -13,10 +13,11 @@ export async function POST(request: Request) {
   if (!token) return NextResponse.json({ error: 'no_token' }, { status: 400 });
 
   setRequestBearer(token);
+  clearUpstreamDown();
   const probe = await probeToken(token);
   if (probe === 'subscription_expired') {
     return NextResponse.json({ error: 'subscription_expired' }, { status: 403 });
   }
   await saveSessionToken(token);
-  return NextResponse.json({ status: probe === 'ok' ? 'ok' : 'ok' });
+  return NextResponse.json({ status: 'ok', probe });
 }
