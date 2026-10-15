@@ -28,9 +28,9 @@ export function TokenBar({
           flexWrap: 'wrap',
           marginBottom: 16,
           padding: '10px 12px',
-          border: '1px solid var(--color-border, #D5DBE5)',
-          borderRadius: 10,
-          background: 'var(--color-muted, #F6F8FA)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius)',
+          background: 'var(--color-muted)',
         }}
       >
         <span style={eyebrow}>ALGOPACK</span>
@@ -57,9 +57,9 @@ export function TokenBar({
         gap: 10,
         marginBottom: 16,
         padding: 16,
-        border: '1px solid var(--color-border, #D5DBE5)',
-        borderRadius: 10,
-        background: 'var(--color-background, #FFFFFF)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius)',
+        background: 'var(--color-card)',
       }}
     >
       <div>
@@ -67,9 +67,9 @@ export function TokenBar({
         <p style={{ margin: '6px 0 0', fontSize: 15, fontWeight: 600, fontFamily: 'Manrope, sans-serif' }}>
           Токен из личного кабинета
         </p>
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-muted-foreground, #5A6578)' }}>
+        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-muted-foreground)' }}>
           Токен остаётся в браузере и уходит только на наш сервер, который вызывает APIM FUTOI. В хост FinamX не попадает. Как в{' '}
-          <a href="https://minakovmax.github.io/finam-chart/" target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary, #1A9B8E)' }}>
+          <a href="https://minakovmax.github.io/finam-chart/" target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)' }}>
             Finam Chart
           </a>
           .
@@ -89,10 +89,10 @@ export function TokenBar({
         запомнить в этом браузере
       </label>
       {status === 'subscription_expired' ? (
-        <p style={{ margin: 0, fontSize: 13, color: '#D64545' }}>Подписка ALGOPACK закончилась или токен не принят</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-destructive)' }}>Подписка ALGOPACK закончилась или токен не принят</p>
       ) : null}
       {status === 'upstream_error' ? (
-        <p style={{ margin: 0, fontSize: 13, color: '#D64545' }}>MOEX не ответил. Проверьте токен и сеть, затем подключитесь снова</p>
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-destructive)' }}>MOEX не ответил. Проверьте токен и сеть, затем подключитесь снова</p>
       ) : null}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         {status === 'ok' ? (

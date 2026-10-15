@@ -24,18 +24,28 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <link rel="preload" href={apiPath('/api/futoi/preview?secid=Si')} as="fetch" crossOrigin="anonymous" />
         )}
       </head>
-      <body style={{ margin: 0 }}>
+      <body style={{ margin: 0, background: 'var(--color-background)', color: 'var(--color-foreground)', fontFamily: 'var(--font-family)' }}>
         <style>{`
           :root {
-            --color-background: #FFFFFF;
-            --color-foreground: #0B1220;
-            --color-primary: #1A9B8E;
-            --color-muted-foreground: #5A6578;
-            --color-border: #D5DBE5;
-            --color-muted: #E8ECF1;
+            --color-background: hsl(0 0% 100%);
+            --color-foreground: hsl(222.2 84% 4.9%);
+            --color-primary: hsl(221.2 83.2% 53.3%);
+            --color-primary-foreground: hsl(210 40% 98%);
+            --color-muted: hsl(210 40% 96.1%);
+            --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+            --color-border: hsl(214.3 31.8% 91.4%);
+            --color-accent: hsl(210 40% 96.1%);
+            --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+            --color-card: hsl(0 0% 100%);
+            --color-card-foreground: hsl(222.2 84% 4.9%);
+            --color-destructive: hsl(0 72.2% 50.6%);
             --font-family: "IBM Plex Sans", system-ui, sans-serif;
-            --radius: 10px;
+            --radius: 0.5rem;
+            --warn: color-mix(in srgb, var(--color-destructive) 45%, var(--color-primary));
           }
+          html, body { background: var(--color-background); color: var(--color-foreground); }
+          html[data-theme='dark'] { color-scheme: dark; }
+          html[data-theme='light'] { color-scheme: light; }
           @keyframes futoi-spin { to { transform: rotate(360deg); } }
           @keyframes futoi-load {
             0% { transform: translateX(-100%); }

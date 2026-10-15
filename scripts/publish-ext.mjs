@@ -48,15 +48,19 @@ async function call(method, path, body) {
 }
 
 const files = readdirSync(join(root, 'manifests')).filter((f) => f.endsWith('.json')).sort();
-const listed = await call('GET', '/api/v1/developer/extensions');
+const listed = await call('GET', '/api/v1/developer/extensions?limit=50');
 const owned = new Set((listed.json.items ?? []).map((i) => i.extensionId));
-console.log(`portal ${listed.status} owned=${owned.size}`);
+console.log(`portal ${listed.status} listed=${owned.size}`);
 
 for (const file of files) {
   const manifest = JSON.parse(readFileSync(join(root, 'manifests', file), 'utf8'));
   const id = manifest.extensionId;
   const version = manifest.versions.at(-1);
-  const exists = owned.has(id);
+  let exists = owned.has(id);
+  if (!exists) {
+    const probe = await call('GET', `/api/v1/developer/extensions/${encodeURIComponent(id)}`);
+    exists = probe.status === 200;
+  }
   let result = exists
     ? await call('POST', `/api/v1/developer/extensions/${encodeURIComponent(id)}/versions`, version)
     : await call('POST', '/api/v1/developer/extensions', manifest);

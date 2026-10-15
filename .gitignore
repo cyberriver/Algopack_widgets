@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# lab journal (personal session state)
+data/lab/
+
 # deps and build
 node_modules/
 .next/
@@ -23,4 +26,5 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp

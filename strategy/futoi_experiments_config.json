@@ -1,0 +1,129 @@
+{
+  "version": "0.1",
+  "status": "research_not_backtested",
+  "universe": {
+    "source": "distinct TICKER from historical FUTOI snapshots",
+    "point_in_time": true,
+    "contract_selection": "highest previous trading day volume",
+    "freeze_contract_for_session": true,
+    "exclude_last_trading_days_before_expiry": 2
+  },
+  "data": {
+    "price_bar_minutes": 5,
+    "futoi_change_minutes": 15,
+    "max_snapshot_age_minutes": 10,
+    "join": "backward asof on available_time",
+    "required_price_fields": [
+      "family",
+      "contract",
+      "session",
+      "bar_start",
+      "bar_end",
+      "open",
+      "high",
+      "low",
+      "close",
+      "volume",
+      "tick_size",
+      "tick_value",
+      "expiry"
+    ],
+    "required_futoi_fields": [
+      "ticker",
+      "clgroup",
+      "pos_long",
+      "pos_short",
+      "pos_long_num",
+      "pos_short_num",
+      "moment",
+      "systime",
+      "available_time"
+    ]
+  },
+  "levels": {
+    "lookback_bars": 12,
+    "atr_bars": 20,
+    "atr_method": "Wilder",
+    "buffer_ticks": 2,
+    "buffer_atr": 0.1,
+    "exclude_current_bar": true,
+    "reset_on_contract_change": true,
+    "reset_on_session_change": true
+  },
+  "features": {
+    "short_sign": "convert documented negative short positions to positive magnitude",
+    "oi": "sum long across FIZ and YUR",
+    "oi_consistency": "sum long equals sum short magnitude",
+    "group_net": "long-short_magnitude",
+    "side_change": "(current_side-reference_side)/reference_total_oi",
+    "percentile_training_days": 60,
+    "percentile_threshold": 0.75,
+    "reference_snapshots": "backward asof using available_time; save actual snapshot age"
+  },
+  "breakout": {
+    "variants": [
+      "B0_price",
+      "B1_positive_oi_change",
+      "B2_positive_oi_change_above_p75",
+      "B3_B1_fiz_net_change_with_direction",
+      "B4_B1_fiz_net_change_against_direction"
+    ],
+    "entry": "first executable quote strictly after decision_time",
+    "stop_atr": 1.0,
+    "target_atr": 2.0,
+    "exit_on_close_inside_frozen_range": true,
+    "max_hold_minutes": 60
+  },
+  "false_breakout": {
+    "variants": [
+      "F0_price_return",
+      "F1_adverse_fiz_side_increased",
+      "F2_F1_side_change_above_p75",
+      "F3_F2_then_side_reduction"
+    ],
+    "return_window_bars": 3,
+    "confirmation_wait_minutes": 10,
+    "entry": "first executable quote strictly after return or confirmation decision",
+    "stop": "episode extreme plus buffer",
+    "max_stop_atr": 1.5,
+    "target_R": 2.0,
+    "max_hold_minutes": 60,
+    "delayed_price_control_for_F3": true
+  },
+  "portfolio": {
+    "risk_per_trade_fraction": 0.001,
+    "max_open_risk_fraction": 0.005,
+    "max_positions_per_family": 1,
+    "pyramiding": false,
+    "overnight": false,
+    "variants_separate_portfolios": true,
+    "simultaneous_signal_order": "family ascending; log rejected signals"
+  },
+  "execution": {
+    "preferred": "historical bid ask",
+    "ohlc_fallback": "next full bar after decision; stop first if stop and target both touched",
+    "fees": "required contract specific schedule",
+    "slippage": "required configurable estimate",
+    "cost_stress_multiplier": 2
+  },
+  "validation": {
+    "train_months": 12,
+    "validation_months": 3,
+    "test_months": 3,
+    "step_months": 3,
+    "final_holdout_months": 6,
+    "purge_overlapping_events": true,
+    "forward_horizons_minutes": [
+      15,
+      30,
+      60
+    ],
+    "report_by": [
+      "family",
+      "contract",
+      "direction",
+      "variant",
+      "month"
+    ]
+  }
+}

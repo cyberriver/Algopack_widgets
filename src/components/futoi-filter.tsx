@@ -41,10 +41,10 @@ export function FutoiFilter({
               type="button"
               onClick={() => onSecid(item.secid)}
               style={{
-                border: `1px solid ${on ? 'var(--color-primary, #1A9B8E)' : 'var(--color-border, #D5DBE5)'}`,
-                background: on ? 'var(--color-primary, #1A9B8E)' : 'var(--color-muted, #E8ECF1)',
-                color: on ? '#FFFFFF' : 'var(--color-foreground, #0B1220)',
-                borderRadius: 6,
+                border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                background: on ? 'var(--color-primary)' : 'var(--color-muted)',
+                color: on ? 'var(--color-primary-foreground)' : 'var(--color-foreground)',
+                borderRadius: 'var(--radius)',
                 padding: '6px 10px',
                 fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
                 fontSize: 12,

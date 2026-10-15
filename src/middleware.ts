@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
     if (!allow) return;
     headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     headers.set('Vary', 'Origin');
   };
 

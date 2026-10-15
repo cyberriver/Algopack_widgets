@@ -40,14 +40,15 @@ export function TokenModal({
         }}
         style={{
           width: 'min(440px, 100%)',
-          background: 'var(--color-background, #FFFFFF)',
-          borderRadius: 14,
+          background: 'var(--color-card)',
+          color: 'var(--color-card-foreground)',
+          borderRadius: 'var(--radius)',
           padding: 24,
           boxShadow: '0 4px 24px rgba(11,18,32,0.06)',
         }}
       >
         <h2 style={title}>Токен ALGOPACK</h2>
-        <p style={{ fontSize: 13, color: 'var(--color-muted-foreground, #5A6578)', margin: '0 0 16px' }}>
+        <p style={{ fontSize: 13, color: 'var(--color-muted-foreground)', margin: '0 0 16px' }}>
           На GitHub Pages токен остаётся в этом браузере (localStorage). В хост и топики не уходит. Если Мосбиржа
           режет CORS, график покажет запасной ряд.
         </p>

@@ -3,11 +3,11 @@
 import type { SnapshotBlock, SnapshotResponse } from '@/lib/types';
 import { hint, title } from './styles';
 
-const muted = 'var(--color-muted-foreground, #5A6578)';
-const up = '#12A36A';
-const down = '#D64545';
-const line = 'var(--color-border, #D5DBE5)';
-const ink = 'var(--color-foreground, #0B1220)';
+const muted = 'var(--color-muted-foreground)';
+const up = 'var(--color-primary)';
+const down = 'var(--color-destructive)';
+const line = 'var(--color-border)';
+const ink = 'var(--color-foreground)';
 const mono = '"IBM Plex Mono", ui-monospace, monospace';
 
 function fmt(n: number | undefined, digits = 0): string {

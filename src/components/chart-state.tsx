@@ -21,12 +21,12 @@ export function ChartState({
               width: 22,
               height: 22,
               borderRadius: '50%',
-              border: '2px solid var(--color-border, #D5DBE5)',
-              borderTopColor: 'var(--color-primary, #1A9B8E)',
+              border: '2px solid var(--color-border)',
+              borderTopColor: 'var(--color-primary)',
               animation: 'futoi-spin 0.8s linear infinite',
             }}
           />
-          <span style={{ fontSize: 13, color: 'var(--color-muted-foreground, #5A6578)' }}>
+          <span style={{ fontSize: 13, color: 'var(--color-muted-foreground)' }}>
             Загрузка с Мосбиржи
           </span>
         </>

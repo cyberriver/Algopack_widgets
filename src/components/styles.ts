@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react';
 
 export const page: CSSProperties = {
-  fontFamily: 'var(--font-family, "IBM Plex Sans", system-ui, sans-serif)',
-  color: 'var(--color-foreground, #0B1220)',
-  background: 'var(--color-background, #FFFFFF)',
+  fontFamily: 'var(--font-family)',
+  color: 'var(--color-foreground)',
+  background: 'var(--color-background)',
   padding: 16,
   boxSizing: 'border-box',
   width: '100%',
@@ -12,16 +12,17 @@ export const page: CSSProperties = {
 };
 
 export const title: CSSProperties = {
-  fontFamily: 'Manrope, "IBM Plex Sans", sans-serif',
+  fontFamily: 'var(--font-family)',
   fontSize: 15,
   fontWeight: 600,
   letterSpacing: '-0.02em',
   margin: '0 0 6px',
+  color: 'var(--color-foreground)',
 };
 
 export const hint: CSSProperties = {
   fontSize: 12,
-  color: 'var(--color-muted-foreground, #5A6578)',
+  color: 'var(--color-muted-foreground)',
   margin: '0 0 12px',
 };
 
@@ -31,14 +32,14 @@ export const eyebrow: CSSProperties = {
   fontWeight: 500,
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
-  color: 'var(--color-muted-foreground, #8B95A8)',
+  color: 'var(--color-muted-foreground)',
 };
 
 export const primaryBtn: CSSProperties = {
-  background: 'var(--color-primary, #1A9B8E)',
-  color: '#FFFFFF',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-foreground)',
   border: 'none',
-  borderRadius: 10,
+  borderRadius: 'var(--radius)',
   padding: '12px 16px',
   fontSize: 14,
   fontWeight: 500,
@@ -46,10 +47,10 @@ export const primaryBtn: CSSProperties = {
 };
 
 export const secondaryBtn: CSSProperties = {
-  background: 'var(--color-muted, #E8ECF1)',
-  color: 'var(--color-foreground, #0B1220)',
-  border: '1px solid var(--color-border, #D5DBE5)',
-  borderRadius: 10,
+  background: 'var(--color-muted)',
+  color: 'var(--color-foreground)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius)',
   padding: '12px 16px',
   fontSize: 14,
   fontWeight: 500,
@@ -59,23 +60,25 @@ export const secondaryBtn: CSSProperties = {
 export const input: CSSProperties = {
   width: '100%',
   height: 42,
-  borderRadius: 10,
-  border: '1px solid var(--color-border, #D5DBE5)',
+  borderRadius: 'var(--radius)',
+  border: '1px solid var(--color-border)',
   padding: '0 12px',
   fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
   fontSize: 13,
   boxSizing: 'border-box',
   outline: 'none',
+  background: 'var(--color-card)',
+  color: 'var(--color-card-foreground)',
 };
 
 export const pane: CSSProperties = {
   minHeight: 220,
-  border: '1px solid var(--color-border, #D5DBE5)',
-  borderRadius: 10,
+  border: '1px solid var(--color-border)',
+  borderRadius: 'var(--radius)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   padding: 16,
   boxSizing: 'border-box',
-  background: 'var(--color-background, #FFFFFF)',
+  background: 'var(--color-background)',
 };

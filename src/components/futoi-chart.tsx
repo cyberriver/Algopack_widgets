@@ -13,6 +13,7 @@ import { axisPoints, carryPrice, toMoscowUnix } from '@/lib/chart-series';
 import { downloadXls, formatCabinetTs, formatRuInt } from '@/lib/export-xls';
 import { addDays, formatDayRu } from '@/lib/range-load';
 import type { ClGroup, LoadProgress, SeriesPoint } from '@/lib/types';
+import { readToken } from '@/lib/host-tokens';
 import { eyebrow, hint, secondaryBtn, title } from './styles';
 
 export type ChartKind = 'long-short' | 'persons' | 'oi' | 'directed';
@@ -161,22 +162,27 @@ export function FutoiChart({
     const el = hostRef.current;
     if (!el) return;
 
+    const bg = readToken(el, '--color-background', 'transparent');
+    const muted = readToken(el, '--color-muted-foreground', '#888888');
+    const line = readToken(el, '--color-border', '#cccccc');
+    const sunken = readToken(el, '--color-muted', '#eeeeee');
+    const font = readToken(el, '--font-family', 'system-ui, sans-serif');
     const chart = createChart(el, {
       width: Math.max(el.clientWidth, 320),
       height: 220,
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#5A6578',
-        fontFamily: '"IBM Plex Sans", system-ui, sans-serif',
+        background: { type: ColorType.Solid, color: bg },
+        textColor: muted,
+        fontFamily: font,
       },
       grid: {
-        vertLines: { color: '#E8ECF1' },
-        horzLines: { color: '#E8ECF1' },
+        vertLines: { color: sunken },
+        horzLines: { color: sunken },
       },
-      rightPriceScale: { borderColor: '#D5DBE5' },
-      leftPriceScale: { visible: true, borderColor: '#D5DBE5' },
+      rightPriceScale: { borderColor: line },
+      leftPriceScale: { visible: true, borderColor: line },
       timeScale: {
-        borderColor: '#D5DBE5',
+        borderColor: line,
         rightOffset: 6,
         minBarSpacing: 3,
         fixLeftEdge: false,
@@ -197,7 +203,7 @@ export function FutoiChart({
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
       crosshair: {
         mode: 0,
-        vertLine: { color: '#8B95A8', labelVisible: false },
+        vertLine: { color: muted, labelVisible: false },
         horzLine: { visible: false, labelVisible: false },
       },
     });
@@ -360,7 +366,7 @@ export function FutoiChart({
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', margin: '0 0 8px' }}>
         {legendItems(kind).map((item) => (
-          <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#5A6578' }}>
+          <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--color-muted-foreground)' }}>
             <span aria-hidden style={{ width: 10, height: 10, background: item.color, borderRadius: 2 }} />
             {item.label}
           </span>
@@ -379,10 +385,10 @@ export function FutoiChart({
               gap: 8,
               padding: '4px 10px',
               borderRadius: 8,
-              background: 'rgba(255,255,255,0.92)',
-              border: '1px solid var(--color-border, #D5DBE5)',
+              background: 'var(--color-card)',
+              border: '1px solid var(--color-border)',
               fontSize: 12,
-              color: 'var(--color-muted-foreground, #5A6578)',
+              color: 'var(--color-muted-foreground)',
             }}
           >
             <span
@@ -391,8 +397,8 @@ export function FutoiChart({
                 width: 12,
                 height: 12,
                 borderRadius: '50%',
-                border: '2px solid var(--color-border, #D5DBE5)',
-                borderTopColor: 'var(--color-primary, #1A9B8E)',
+                border: '2px solid var(--color-border)',
+                borderTopColor: 'var(--color-primary)',
                 animation: 'futoi-spin 0.8s linear infinite',
               }}
             />
@@ -410,8 +416,9 @@ export function FutoiChart({
               minWidth: 200,
               padding: '10px 12px',
               borderRadius: 6,
-              background: '#2A2A2A',
-              color: '#FFFFFF',
+              background: 'var(--color-card)',
+              color: 'var(--color-card-foreground)',
+              border: '1px solid var(--color-border)',
               fontSize: 12,
               lineHeight: 1.45,
               pointerEvents: 'none',

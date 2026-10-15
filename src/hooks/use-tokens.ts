@@ -1,40 +1,38 @@
 'use client';
 
 import { useLayoutEffect } from 'react';
-import { HOST_TOKENS_EVENT, mergeUITokens, type UITokens } from '@finamx/bridge-protocol';
+import { HOST_TOKENS_EVENT, type UITokens } from '@finamx/bridge-protocol';
 import type { ExtensionBridge } from '@finamx/extension-sdk';
+import { applyTokenVars, themeFromTokens } from '@/lib/host-tokens';
 
-function applyTokens(target: HTMLElement, tokens: UITokens): () => void {
-  Object.entries(tokens.colors).forEach(([key, value]) => {
-    target.style.setProperty(`--color-${key}`, value as string);
-  });
-  target.style.setProperty('--radius', tokens.radius);
-  target.style.setProperty('--font-family', tokens.fontFamily);
-  return () => {
-    Object.keys(tokens.colors).forEach((key) => target.style.removeProperty(`--color-${key}`));
-    target.style.removeProperty('--radius');
-    target.style.removeProperty('--font-family');
-  };
+function eventData(e: unknown): unknown {
+  if (e && typeof e === 'object') {
+    const r = e as { data?: unknown; payload?: unknown };
+    if (r.data !== undefined) return r.data;
+    if (r.payload !== undefined) return r.payload;
+  }
+  return e;
 }
 
-export function useHostTokens(bridge: ExtensionBridge | null, target: HTMLElement | null): void {
-  const snapshot = bridge?.hostContext?.uiTokens ? JSON.stringify(bridge.hostContext.uiTokens) : null;
+function paint(partial: Partial<UITokens> | undefined, extra: HTMLElement | null): void {
+  const roots = [document.documentElement, document.body, extra].filter((el): el is HTMLElement => Boolean(el));
+  for (const el of roots) applyTokenVars(el, partial);
+  document.documentElement.dataset.theme = themeFromTokens(partial);
+}
 
+/** Токены хоста на html/body — иначе iframe остаётся белым, а карточка красится. Как code-nodes / terminal-op. */
+export function useHostTokens(bridge: ExtensionBridge | null, target: HTMLElement | null): void {
   useLayoutEffect(() => {
-    if (!bridge || !target || !snapshot) return;
-    const host = bridge.hostContext?.uiTokens;
-    if (!host) return;
-    const initial = mergeUITokens(host);
-    let cleanup = applyTokens(target, initial);
+    if (!bridge) return;
+    const initial = bridge.hostContext?.uiTokens;
+    if (initial) paint(initial, target);
     const unsub = bridge.platform.on(HOST_TOKENS_EVENT, (payload) => {
-      const incoming = payload.data;
+      const incoming = eventData(payload);
       if (!incoming || typeof incoming !== 'object') return;
-      cleanup();
-      cleanup = applyTokens(target, mergeUITokens(incoming as Partial<UITokens>));
+      paint(incoming as Partial<UITokens>, target);
     });
     return () => {
       unsub();
-      cleanup();
     };
-  }, [bridge, target, snapshot]);
+  }, [bridge, target]);
 }

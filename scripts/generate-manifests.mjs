@@ -24,6 +24,18 @@ const WIDGETS = [
   ['dashboard', 'FUTOI обзор', 'Таблица и все графики открытых позиций в одном виджете.', true, true],
 ];
 
+const LAB_WIDGETS = [
+  ['lab-method', 'Лаборатория: методология', 'B0/B1, ΔOI = ln(now/ref), oi_unavailable ≠ фильтр.', false],
+  ['lab-hypotheses', 'Лаборатория: гипотезы', 'Реестр H-MOVE / H-OI / H-BRK / H-CONF. Без кнопки «подтверждена».', false],
+  ['lab-instrument', 'Лаборатория: инструмент', 'Семейство и серия. Смена закрывает журнал. fdc3.instrument.', true],
+  ['lab-protocol', 'Лаборатория: протокол', 'Замороженные правила Si_breakout_v0.2. Поля только чтение.', false],
+  ['lab-readiness', 'Лаборатория: готовность', 'Три лампы: цена M5, FUTOI, исполнение. Жёлтый OI не гасит цену.', false],
+  ['lab-b', 'Лаборатория B', 'Автодетект пробоя M5. Факт без вердикта на графике.', false],
+  ['lab-observations', 'Лаборатория: наблюдения', 'Неизменяемые события B0/B1, age/lifetime, связь с гипотезой.', false],
+  ['lab-summary', 'Лаборатория: сводка', 'Счётчики вариантов. Не допуск в live.', false],
+  ['lab', 'Лаборатория', 'Экраны P0.1 на одной карточке.', true],
+];
+
 function topics(publishes, subscribes) {
   const result = { publishes: [], subscribes: [] };
   if (publishes) {
@@ -64,8 +76,8 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
     platformSupport: ['web'],
     versions: [
       {
-        version: '1.0.3',
-        changelog: 'BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)',
+        version: '1.0.5',
+        changelog: 'Лаборатория P0.1 и токены фона/цвета хоста Open Platform',
         capabilitiesRequested: ['user.profile.read', 'ui.toast'],
         ...(integrity ? { integrity } : {}),
         surfaces: {
@@ -83,5 +95,51 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
   writeFileSync(join(outDir, `${slug}.json`), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
+const LAB_IDS = {
+  'lab-method': 'method',
+  'lab-hypotheses': 'hypotheses',
+  'lab-instrument': 'instrument',
+  'lab-protocol': 'protocol',
+  'lab-readiness': 'readiness',
+  'lab-b': 'b',
+  'lab-observations': 'observations',
+  'lab-summary': 'summary',
+  lab: 'combined',
+};
+
+for (const [slug, title, description, publishInstrument] of LAB_WIDGETS) {
+  const embedEntryPath = `/widgets/${slug}${entrySuffix}`;
+  const pageUrl = new URL(embedEntryPath, bundle).href;
+  const integrity = pin ? { bundleSha256: await pageSha256(pageUrl) } : undefined;
+  const manifest = {
+    extensionId: `com.finamx.algopack.lab.${LAB_IDS[slug]}`,
+    displayName: title,
+    description,
+    visibility: 'public',
+    platformSupport: ['web'],
+    versions: [
+      {
+        version: '1.0.5',
+        changelog: 'P0.1 лаборатории и токены фона/цвета хоста Open Platform',
+        capabilitiesRequested: ['user.profile.read', 'ui.toast'],
+        ...(integrity ? { integrity } : {}),
+        surfaces: {
+          ui: {
+            renderMode: 'external-embed',
+            embedBundleUrl: bundle,
+            embedEntryPath,
+            embedSandbox: 'allow-scripts allow-popups',
+          },
+          topics: {
+            publishes: publishInstrument ? [{ topicType: 'fdc3.instrument' }] : [],
+            subscribes: [{ topicType: 'fdc3.instrument' }],
+          },
+        },
+      },
+    ],
+  };
+  writeFileSync(join(outDir, `${slug}.json`), `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 copyFileSync(join(outDir, 'dashboard.json'), join(root, 'manifest.json'));
-console.log(`wrote ${WIDGETS.length} manifests → ${bundle}${pin ? ' (sha256 pinned)' : ''}`);
+console.log(`wrote ${WIDGETS.length + LAB_WIDGETS.length} manifests → ${bundle}${pin ? ' (sha256 pinned)' : ''}`);

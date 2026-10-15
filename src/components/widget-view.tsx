@@ -14,6 +14,8 @@ import { FutoiFilter } from './futoi-filter';
 import { FutoiTable } from './futoi-table';
 import { LazyChart } from './lazy-chart';
 import { TokenBar } from './token-bar';
+import { LabWidget, isLabSlug } from './lab-widgets';
+import { WidgetMenu } from './widget-menu';
 import { hint, page } from './styles';
 
 function paneStatus(
@@ -183,6 +185,14 @@ function DashboardWidget() {
 }
 
 export function WidgetView({ slug }: { slug: WidgetSlug }) {
+  if (isLabSlug(slug)) {
+    return (
+      <div style={page}>
+        <WidgetMenu current={slug} />
+        <LabWidget slug={slug} />
+      </div>
+    );
+  }
   let body: ReactNode;
   if (slug === 'filter') body = <FilterWidget />;
   else if (slug === 'table') body = <TableWidget />;
@@ -196,5 +206,10 @@ export function WidgetView({ slug }: { slug: WidgetSlug }) {
   else if (slug === 'directed-fiz') body = <ChartWidget slug={slug} kind="directed" group="FIZ" />;
   else body = <ChartWidget slug={slug} kind="directed" group="YUR" />;
 
-  return <div style={page}>{body}</div>;
+  return (
+    <div style={page}>
+      <WidgetMenu current={slug} />
+      {body}
+    </div>
+  );
 }

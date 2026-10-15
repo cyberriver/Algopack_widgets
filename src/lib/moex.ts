@@ -562,15 +562,15 @@ export async function getSeries(
   secid: string,
   from: string,
   to: string,
-  opts: { quick?: boolean } = {},
+  opts: { quick?: boolean; skipPrices?: boolean } = {},
 ): Promise<{ points: SeriesPoint[]; stale?: boolean }> {
   if (upstreamDown()) throw new MoexError('upstream_error', 'moex marked down');
-  const points = await buildSeries(secid, from, to, { skipPrices: false });
+  const points = await buildSeries(secid, from, to, { skipPrices: opts.skipPrices ?? false });
   if (points.length) return { points };
   if (!opts.quick) {
     const session = await lastSessionWithRows(secid, to);
     if (session) {
-      const fallback = await buildSeries(secid, session, session);
+      const fallback = await buildSeries(secid, session, session, { skipPrices: opts.skipPrices ?? false });
       if (fallback.length) return { points: fallback };
     }
   }
@@ -579,4 +579,78 @@ export async function getSeries(
 
 export function assetName(secid: string): string {
   return ASSET_NAMES[secid] ?? secid;
+}
+
+export type OhlcBar = {
+  begin: string;
+  end: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  complete: boolean;
+};
+
+/** Super Candles FO, 5 мин. Тот же APIM и Bearer, что у FUTOI-виджетов. ISS не зовём. */
+export async function loadOhlcCandles(contract: string, from: string, to: string, intervalMin: 5 | 10 | 15 | 30 | 60 = 5): Promise<OhlcBar[]> {
+  if (intervalMin !== 5) {
+    throw new MoexError('upstream_error', 'Algopack Super Candles FO только M5');
+  }
+  const all: OhlcBar[] = [];
+  let start = 0;
+  for (let page = 0; page < 20; page++) {
+    const q = new URLSearchParams({
+      'iss.meta': 'off',
+      from,
+      till: to,
+      start: String(start),
+    });
+    const url = `${APIM}/iss/datashop/algopack/fo/tradestats/${encodeURIComponent(contract)}.json?${q}`;
+    const json = await fetchJson(url, true);
+    const table = tableFromIss(json, ['data', 'tradestats']);
+    if (!table) break;
+    const bars = parseTradeStats(table);
+    all.push(...bars);
+    const cursor = tableFromIss(json, ['data.cursor']);
+    const total = cursor ? num(cursor.data[0]?.[1]) : bars.length;
+    const pageSize = cursor ? num(cursor.data[0]?.[2]) : 1000;
+    start += pageSize || 1000;
+    if (!bars.length || start >= total) break;
+  }
+  const byEnd = new Map(all.map((b) => [b.end, b]));
+  return [...byEnd.values()].sort((a, b) => a.end.localeCompare(b.end));
+}
+
+function parseTradeStats(table: { columns: string[]; data: unknown[][] }): OhlcBar[] {
+  const c = table.columns;
+  const iDate = colIndex(c, ['tradedate']);
+  const iTime = colIndex(c, ['tradetime']);
+  const iOpen = colIndex(c, ['pr_open', 'sec_pr_open', 'open']);
+  const iHigh = colIndex(c, ['pr_high', 'sec_pr_high', 'high']);
+  const iLow = colIndex(c, ['pr_low', 'sec_pr_low', 'low']);
+  const iClose = colIndex(c, ['pr_close', 'sec_pr_close', 'close']);
+  const iVol = colIndex(c, ['vol', 'volume']);
+  if (iDate < 0 || iTime < 0 || iClose < 0) return [];
+  const now = Date.now();
+  const out: OhlcBar[] = [];
+  for (const line of table.data) {
+    const beginRaw = `${str(line[iDate])}T${str(line[iTime])}`;
+    const beginMs = Date.parse(`${beginRaw}+03:00`);
+    if (!Number.isFinite(beginMs)) continue;
+    const close = contractPoints(num(line[iClose]));
+    if (close <= 0) continue;
+    const endMs = beginMs + 5 * 60_000;
+    out.push({
+      begin: new Date(beginMs).toISOString(),
+      end: new Date(endMs).toISOString(),
+      open: contractPoints(iOpen >= 0 ? num(line[iOpen]) : close),
+      high: contractPoints(iHigh >= 0 ? num(line[iHigh]) : close),
+      low: contractPoints(iLow >= 0 ? num(line[iLow]) : close),
+      close,
+      volume: iVol >= 0 ? num(line[iVol]) : 0,
+      complete: endMs <= now,
+    });
+  }
+  return out;
 }
