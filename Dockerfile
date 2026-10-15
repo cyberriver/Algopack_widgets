@@ -21,6 +21,7 @@ RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+RUN mkdir -p /app/data/lab && chown -R nextjs:nodejs /app/data
 USER nextjs
 EXPOSE 3010
 HEALTHCHECK --interval=20s --timeout=5s --retries=5 \

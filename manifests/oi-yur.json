@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.oi-yur",
   "displayName": "FUTOI открытый интерес юрлица",
+  "summary": "Сумма длинных и коротких позиций юридических лиц.",
   "description": "Сумма длинных и коротких позиций юридических лиц.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "3b568f4a626c3e78c8e53e06340c66614e9aceaa0b5fa3e6b3cb42ae1f4e3bd5"
+        "bundleSha256": "353a63680cf7b4570ed1405360bd15a02b8a18d56c22248ecdc07ad1fa3a7b57"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/oi-yur",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/oi-yur"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

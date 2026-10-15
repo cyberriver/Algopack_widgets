@@ -47,7 +47,15 @@ async function call(method, path, body) {
   return { status: res.status, json };
 }
 
-const files = readdirSync(join(root, 'manifests')).filter((f) => f.endsWith('.json')).sort();
+const requested = new Set(process.argv.slice(2));
+const files = readdirSync(join(root, 'manifests'))
+  .filter((file) => file.endsWith('.json') && (!requested.size || requested.has(file)))
+  .sort();
+if (requested.size && files.length !== requested.size) {
+  const missing = [...requested].filter((file) => !files.includes(file));
+  console.error(`Manifest not found: ${missing.join(', ')}`);
+  process.exit(1);
+}
 const listed = await call('GET', '/api/v1/developer/extensions?limit=50');
 const owned = new Set((listed.json.items ?? []).map((i) => i.extensionId));
 console.log(`portal ${listed.status} listed=${owned.size}`);

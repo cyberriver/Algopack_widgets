@@ -19,15 +19,9 @@ const FUTOI_ORDER: WidgetSlug[] = [
 ];
 
 const LAB_ORDER: WidgetSlug[] = [
-  'lab',
-  'lab-method',
-  'lab-hypotheses',
-  'lab-instrument',
-  'lab-protocol',
-  'lab-readiness',
-  'lab-b',
-  'lab-observations',
-  'lab-summary',
+  'lab-experiments',
+  'lab-monitor',
+  'lab-results',
 ];
 
 function bySlug(slug: WidgetSlug) {

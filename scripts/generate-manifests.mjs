@@ -25,31 +25,41 @@ const WIDGETS = [
 ];
 
 const LAB_WIDGETS = [
-  ['lab-method', 'Лаборатория: методология', 'B0/B1, ΔOI = ln(now/ref), oi_unavailable ≠ фильтр.', false],
-  ['lab-hypotheses', 'Лаборатория: гипотезы', 'Реестр H-MOVE / H-OI / H-BRK / H-CONF. Без кнопки «подтверждена».', false],
-  ['lab-instrument', 'Лаборатория: инструмент', 'Семейство и серия. Смена закрывает журнал. fdc3.instrument.', true],
-  ['lab-protocol', 'Лаборатория: протокол', 'Замороженные правила Si_breakout_v0.2. Поля только чтение.', false],
-  ['lab-readiness', 'Лаборатория: готовность', 'Три лампы: цена M5, FUTOI, исполнение. Жёлтый OI не гасит цену.', false],
-  ['lab-b', 'Лаборатория B', 'Автодетект пробоя M5. Факт без вердикта на графике.', false],
-  ['lab-observations', 'Лаборатория: наблюдения', 'Неизменяемые события B0/B1, age/lifetime, связь с гипотезой.', false],
-  ['lab-summary', 'Лаборатория: сводка', 'Счётчики вариантов. Не допуск в live.', false],
-  ['lab', 'Лаборатория', 'Экраны P0.1 на одной карточке.', true],
+  ['lab-experiments', 'Лаборатория: эксперименты', 'Настройка с подсказками по истории, методология, бэктест и параллельный запуск.', true],
+  ['lab-monitor', 'Лаборатория: монитор', 'M5-свечи, условные маркеры пробоев, дорожки и сравнение нескольких экспериментов.', false],
+  ['lab-results', 'Лаборатория: результаты', 'Раздельные historical replay и live-события, сделки, доходность и гипотезы.', false],
 ];
 
 function topics(publishes, subscribes) {
   const result = { publishes: [], subscribes: [] };
   if (publishes) {
-    result.publishes.push({ topicType: FILTER_TOPIC }, { topicType: 'fdc3.instrument' });
+    result.publishes.push(
+      {
+        topicType: FILTER_TOPIC,
+        delivery: ['bridge'],
+        schema: {
+          type: 'object',
+          required: ['secid'],
+          properties: {
+            secid: { type: 'string', minLength: 1, maxLength: 32 },
+            assetName: { type: 'string', maxLength: 200 },
+            sessionDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+            lookback: { enum: ['session', '5d', '20d', '60d'] },
+          },
+          additionalProperties: false,
+        },
+      },
+      { topicType: 'fdc3.instrument', delivery: ['bridge'] },
+    );
   }
   if (subscribes) {
     result.subscribes.push(
-      { topicType: FILTER_TOPIC },
-      { topicType: 'fdc3.instrument' },
-      { topicType: 'finamx.timeframe' },
+      { topicType: FILTER_TOPIC, delivery: ['bridge'] },
+      { topicType: 'fdc3.instrument', delivery: ['bridge'] },
     );
   }
   if (publishes && !subscribes) {
-    result.subscribes.push({ topicType: 'fdc3.instrument' }, { topicType: 'finamx.timeframe' });
+    result.subscribes.push({ topicType: 'fdc3.instrument', delivery: ['bridge'] });
   }
   return result;
 }
@@ -71,24 +81,26 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
   const manifest = {
     extensionId: `com.finamx.algopack.futoi.${slug}`,
     displayName: title,
+    summary: description.slice(0, 280),
     description,
     visibility: 'public',
+    status: 'draft',
     platformSupport: ['web'],
     versions: [
       {
         version: '1.0.5',
         changelog: 'Лаборатория P0.1 и токены фона/цвета хоста Open Platform',
-        capabilitiesRequested: ['user.profile.read', 'ui.toast'],
+        capabilitiesRequested: ['ui.toast'],
         ...(integrity ? { integrity } : {}),
         surfaces: {
           ui: {
             renderMode: 'external-embed',
             embedBundleUrl: bundle,
             embedEntryPath,
-            embedSandbox: 'allow-scripts allow-popups',
           },
           topics: topics(publishes, subscribes),
         },
+        monetization: { type: 'free' },
       },
     ],
   };
@@ -96,15 +108,9 @@ for (const [slug, title, description, publishes, subscribes] of WIDGETS) {
 }
 
 const LAB_IDS = {
-  'lab-method': 'method',
-  'lab-hypotheses': 'hypotheses',
-  'lab-instrument': 'instrument',
-  'lab-protocol': 'protocol',
-  'lab-readiness': 'readiness',
-  'lab-b': 'b',
-  'lab-observations': 'observations',
-  'lab-summary': 'summary',
-  lab: 'combined',
+  'lab-experiments': 'experiments',
+  'lab-monitor': 'monitor',
+  'lab-results': 'results',
 };
 
 for (const [slug, title, description, publishInstrument] of LAB_WIDGETS) {
@@ -114,27 +120,29 @@ for (const [slug, title, description, publishInstrument] of LAB_WIDGETS) {
   const manifest = {
     extensionId: `com.finamx.algopack.lab.${LAB_IDS[slug]}`,
     displayName: title,
+    summary: description.slice(0, 280),
     description,
     visibility: 'public',
+    status: 'draft',
     platformSupport: ['web'],
     versions: [
       {
-        version: '1.0.5',
-        changelog: 'P0.1 лаборатории и токены фона/цвета хоста Open Platform',
-        capabilitiesRequested: ['user.profile.read', 'ui.toast'],
+        version: '1.4.0',
+        changelog: 'Метрики бэктеста, денежная модель, итоговый live-отчёт, выбор результатов и компактные карточки',
+        capabilitiesRequested: ['ui.toast'],
         ...(integrity ? { integrity } : {}),
         surfaces: {
           ui: {
             renderMode: 'external-embed',
             embedBundleUrl: bundle,
             embedEntryPath,
-            embedSandbox: 'allow-scripts allow-popups',
           },
           topics: {
-            publishes: publishInstrument ? [{ topicType: 'fdc3.instrument' }] : [],
-            subscribes: [{ topicType: 'fdc3.instrument' }],
+            publishes: publishInstrument ? [{ topicType: 'fdc3.instrument', delivery: ['bridge'] }] : [],
+            subscribes: [{ topicType: 'fdc3.instrument', delivery: ['bridge'] }],
           },
         },
+        monetization: { type: 'free' },
       },
     ],
   };

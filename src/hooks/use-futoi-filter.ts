@@ -82,17 +82,9 @@ export function useFutoiFilter(
       setUnsupported(null);
       apply({ ...filterRef.current, secid: ticker }, false);
     });
-    const unsubTf = bridge.context.subscribe('finamx.timeframe', (payload) => {
-      const tf = payload as { from?: string; to?: string };
-      if (!tf?.from && !tf?.to) return;
-      const sessionDate = tf.to?.slice(0, 10) || tf.from?.slice(0, 10);
-      if (!sessionDate || sessionDate === filterRef.current.sessionDate) return;
-      setFilter((prev) => ({ ...prev, sessionDate }));
-    });
     return () => {
       unsubFilter();
       unsubInst();
-      unsubTf();
     };
   }, [bridge, apply, known]);
 

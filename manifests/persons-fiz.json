@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.persons-fiz",
   "displayName": "FUTOI число лиц физлица",
+  "summary": "Количество физических лиц с открытыми позициями.",
   "description": "Количество физических лиц с открытыми позициями.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "c9335a92d7c0ab21a38759727ae0cf81e6987c57b7be32e93e2f1c9113f23aaf"
+        "bundleSha256": "67893f2e11fb497a6d9cd1a12c792b4d0e4e400303605db49089612fdefb187a"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/persons-fiz",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/persons-fiz"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

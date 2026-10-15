@@ -4,5 +4,10 @@
 
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy app:3010
+	reverse_proxy app:3010 {
+		transport http {
+			read_timeout 120s
+			write_timeout 120s
+		}
+	}
 }

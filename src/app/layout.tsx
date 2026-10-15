@@ -46,6 +46,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           html, body { background: var(--color-background); color: var(--color-foreground); }
           html[data-theme='dark'] { color-scheme: dark; }
           html[data-theme='light'] { color-scheme: light; }
+          button { transition: transform 80ms ease, opacity 120ms ease; }
+          button:active:not(:disabled) { transform: translateY(1px) scale(0.99); opacity: 0.78; }
+          button:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+          button[aria-busy='true'] { cursor: progress; opacity: 0.72; }
           @keyframes futoi-spin { to { transform: rotate(360deg); } }
           @keyframes futoi-load {
             0% { transform: translateX(-100%); }

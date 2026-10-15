@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.directed-fiz",
   "displayName": "FUTOI направленная физлица",
+  "summary": "Направленная позиция физических лиц (long − short).",
   "description": "Направленная позиция физических лиц (long − short).",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "89da2bbbf2979a859b9ffc57cf28d0c1d6d2aa92f8627e0dc05f5b5510d08f83"
+        "bundleSha256": "7fac153033f87d9b941913abdd346cdd897b699d7d66686937fb9b31eb93baa1"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/directed-fiz",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/directed-fiz"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

@@ -1,7 +1,7 @@
 import type { OhlcBar } from '@/lib/moex';
-import { joinOi, oiPositive, type OiSnap } from './join';
+import { joinOi, oiPositive, type OiJoin } from './join';
 import { isAfterCutoff } from './time';
-import type { LabEvent, LabState, LabTrade, Protocol, VariantId } from './types';
+import type { DataReceipt, LabEvent, LabExperiment, LabTrade, Protocol, VariantId } from './types';
 import { TICK_SIZE } from './types';
 import type { SeriesPoint } from '@/lib/types';
 
@@ -21,13 +21,14 @@ export function trueRange(prevClose: number, bar: OhlcBar): number {
 
 export function atrAt(bars: OhlcBar[], index: number, period: number): number {
   if (index < 1) return 0;
-  const start = Math.max(1, index - period);
   const ranges: number[] = [];
-  for (let i = start; i < index; i++) {
-    ranges.push(trueRange(bars[i - 1].close, bars[i]));
+  for (let i = 1; i < index; i++) ranges.push(trueRange(bars[i - 1].close, bars[i]));
+  if (ranges.length < period) return 0;
+  let atr = ranges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+  for (let i = period; i < ranges.length; i++) {
+    atr = (atr * (period - 1) + ranges[i]) / period;
   }
-  if (!ranges.length) return 0;
-  return ranges.reduce((a, b) => a + b, 0) / ranges.length;
+  return atr;
 }
 
 export function lookbackRange(bars: OhlcBar[], index: number, lookback: number): { u: number; d: number } {
@@ -39,7 +40,7 @@ export function lookbackRange(bars: OhlcBar[], index: number, lookback: number):
 }
 
 export function detectSignal(bars: OhlcBar[], index: number, protocol: Protocol): Signal | null {
-  if (index < protocol.lookback_bars || index < 1) return null;
+  if (index < protocol.lookback_bars || index <= protocol.atr_bars) return null;
   const bar = bars[index];
   if (!bar.complete) return null;
   const prev = bars[index - 1];
@@ -68,19 +69,22 @@ function nextId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function hasOpenTrade(state: LabState, variant: VariantId): boolean {
+function hasOpenTrade(state: LabExperiment, variant: VariantId): boolean {
   return state.trades.some((t) => t.variant_id === variant && (t.status === 'open' || t.status === 'pending_entry'));
 }
 
 function makeEvent(
-  state: LabState,
+  state: LabExperiment,
   bar: OhlcBar,
   signal: Signal,
   nowIso: string,
-  oi: OiSnap | { status: 'unavailable' },
+  oi: OiJoin,
   futoiLifetimeSec: number | null,
+  priceReceipt: DataReceipt,
+  decisionDeadline: string,
+  barrierReadyAt: string,
 ): LabEvent {
-  const processing = Date.parse(nowIso) - Date.parse(bar.end);
+  const processing = Date.parse(nowIso) - Date.parse(barrierReadyAt);
   return {
     event_id: nextId('evt'),
     timeframe: 'M5',
@@ -92,7 +96,7 @@ function makeEvent(
     family: state.protocol.family,
     direction: signal.direction,
     signal_time: bar.end,
-    decision_time: bar.end,
+    decision_time: nowIso,
     bar_end: bar.end,
     bar_begin: bar.begin,
     level: signal.level,
@@ -101,20 +105,31 @@ function makeEvent(
     buffer: signal.buffer,
     range_u: signal.range_u,
     range_d: signal.range_d,
+    move: bar.close - bar.open,
+    volume: bar.volume ?? null,
+    vol_b: bar.vol_b ?? null,
+    vol_s: bar.vol_s ?? null,
+    put_vol_b: bar.put_vol_b ?? null,
+    put_vol_s: bar.put_vol_s ?? null,
+    book_bid_vwap: bar.book_bid_vwap ?? null,
+    book_ask_vwap: bar.book_ask_vwap ?? null,
     price_source: 'algopack_tradestats',
+    price_received_at: priceReceipt.received_at,
+    decision_deadline: decisionDeadline,
+    barrier_ready_at: barrierReadyAt,
     oi: oi.status === 'available' ? oi.oi : null,
     oi_ref: oi.status === 'available' ? oi.oi_ref : null,
     oi_change: oi.status === 'available' ? oi.oi_change : null,
     oi_change_ln: oi.status === 'available' ? oi.oi_change_ln : null,
     oi_fresh: oi.status === 'available' ? oi.oi_fresh : null,
-    oi_status: oi.status === 'available' ? 'available' : 'unavailable',
+    oi_status: oi.status,
     futoi_lifetime_sec: futoiLifetimeSec,
     fiz_long: oi.status === 'available' ? oi.fiz_long : null,
     fiz_short: oi.status === 'available' ? oi.fiz_short : null,
     yur_long: oi.status === 'available' ? oi.yur_long : null,
     yur_short: oi.status === 'available' ? oi.yur_short : null,
-    snapshot_time: oi.status === 'available' ? oi.snapshot_time : null,
-    received_time: oi.status === 'available' ? oi.received_time : null,
+    snapshot_time: oi.status === 'unavailable' ? null : oi.snapshot_time,
+    received_time: oi.status === 'unavailable' ? null : oi.received_time,
     snapshot_age_sec: oi.status === 'available' ? oi.snapshot_age_sec : null,
     filter_passed: oiPositive(oi),
     processing_delay_ms: Math.max(0, processing),
@@ -179,6 +194,11 @@ function fillEntry(trade: LabTrade, event: LabEvent, protocol: Protocol, bar: Oh
   trade.target = Math.round(target / TICK_SIZE) * TICK_SIZE;
 }
 
+function firstEntryBar(bars: OhlcBar[], decisionTime: string): OhlcBar | undefined {
+  const decision = Date.parse(decisionTime);
+  return bars.find((bar) => Date.parse(bar.begin) >= decision);
+}
+
 function tryExit(trade: LabTrade, event: LabEvent, protocol: Protocol, bars: OhlcBar[], fromIndex: number): void {
   if (trade.status !== 'open' || trade.entry_price == null || trade.stop == null || trade.target == null) return;
   const holdUntil = fromIndex + protocol.max_hold_bars;
@@ -220,9 +240,11 @@ function tryExit(trade: LabTrade, event: LabEvent, protocol: Protocol, bars: Ohl
 }
 
 export function applyTick(
-  state: LabState,
+  state: LabExperiment,
   bars: OhlcBar[],
   futoi: SeriesPoint[],
+  priceReceipts: Record<string, DataReceipt>,
+  futoiReceipts: Record<string, DataReceipt>,
   nowIso: string,
   futoiLifetimeSec: number | null = null,
 ): { newEvents: number; newTrades: number } {
@@ -230,6 +252,7 @@ export function applyTick(
   let newTrades = 0;
   const seen = new Set(state.processed_bar_ends);
   const protocol = state.protocol;
+  const sessionStartedAt = Date.parse(state.session.started_at);
 
   for (const trade of state.trades) {
     if (trade.status !== 'pending_entry' && trade.status !== 'open') continue;
@@ -238,7 +261,7 @@ export function applyTick(
     const signalIdx = bars.findIndex((b) => b.end === event.bar_end);
     if (signalIdx < 0) continue;
     if (trade.status === 'pending_entry') {
-      const next = bars[signalIdx + 1];
+      const next = firstEntryBar(bars, event.decision_time);
       if (!next) continue;
       if (isAfterCutoff(event.decision_time, protocol.session_cutoff_hhmm)) {
         trade.status = 'skipped';
@@ -247,32 +270,77 @@ export function applyTick(
       }
       fillEntry(trade, event, protocol, next);
     }
-    const entryIdx = bars.findIndex((b) => b.begin === trade.entry_time);
+      const entryIdx = bars.findIndex((b) => b.begin === trade.entry_time);
     tryExit(trade, event, protocol, bars, entryIdx >= 0 ? entryIdx : signalIdx + 1);
   }
 
   for (let i = 0; i < bars.length; i++) {
     const bar = bars[i];
     if (!bar.complete || seen.has(bar.end)) continue;
+    if (Number.isFinite(sessionStartedAt) && Date.parse(bar.end) < sessionStartedAt) {
+      seen.add(bar.end);
+      state.processed_bar_ends.push(bar.end);
+      continue;
+    }
+    const priceReceipt = priceReceipts[bar.end];
+    if (!priceReceipt) continue;
+    const deadline = new Date(Date.parse(bar.end) + protocol.decision_deadline_ms).toISOString();
+    const oi = joinOi(
+      futoi,
+      futoiReceipts,
+      bar.begin,
+      deadline,
+      protocol.oi_window_min,
+      protocol.max_snapshot_age_min,
+    );
+    const now = Date.parse(nowIso);
+    const deadlineMs = Date.parse(deadline);
+    const priceReceivedLate = Date.parse(priceReceipt.received_at) > deadlineMs;
+    if (!priceReceivedLate && oi.status !== 'available' && now < deadlineMs) continue;
+
     seen.add(bar.end);
     state.processed_bar_ends.push(bar.end);
     const signal = detectSignal(bars, i, protocol);
     if (!signal) continue;
 
-    const oi = joinOi(futoi, bar.begin, nowIso, protocol.oi_window_min, protocol.max_snapshot_age_min);
-    const event = makeEvent(state, bar, signal, nowIso, oi, futoiLifetimeSec);
+    const oiReadyAt = oi.status === 'unavailable' ? deadline : oi.received_time;
+    const barrierReadyAt =
+      Date.parse(priceReceipt.received_at) >= Date.parse(oiReadyAt) ? priceReceipt.received_at : oiReadyAt;
+    const event = makeEvent(
+      state,
+      bar,
+      signal,
+      nowIso,
+      oi,
+      futoiLifetimeSec,
+      priceReceipt,
+      deadline,
+      barrierReadyAt,
+    );
     state.events.push(event);
     newEvents += 1;
 
     const late = event.decision_lateness === 'processing_late';
-    for (const variant of ['B_PRICE', 'B_OI_POSITIVE'] as VariantId[]) {
+    const variants: VariantId[] =
+      state.entry_rule === 'price_breakout_oi_up' ? ['B_OI_POSITIVE'] : ['B_PRICE'];
+    for (const variant of variants) {
       if (isAfterCutoff(event.decision_time, protocol.session_cutoff_hhmm)) {
         state.trades.push(skipTrade(event, variant, 'session_close'));
         newTrades += 1;
         continue;
       }
+      if (priceReceivedLate) {
+        state.trades.push(skipTrade(event, variant, 'price_received_late'));
+        newTrades += 1;
+        continue;
+      }
       if (late) {
         state.trades.push(skipTrade(event, variant, 'processing_late'));
+        newTrades += 1;
+        continue;
+      }
+      if (variant === 'B_OI_POSITIVE' && event.oi_status === 'received_late') {
+        state.trades.push(skipTrade(event, variant, 'oi_received_late'));
         newTrades += 1;
         continue;
       }
@@ -292,7 +360,7 @@ export function applyTick(
         continue;
       }
       const trade = pendingTrade(event, variant);
-      const next = bars[i + 1];
+      const next = firstEntryBar(bars, event.decision_time);
       if (next) fillEntry(trade, event, protocol, next);
       state.trades.push(trade);
       newTrades += 1;
@@ -309,7 +377,7 @@ export function applyTick(
   return { newEvents, newTrades };
 }
 
-export function summarize(state: LabState) {
+export function summarize(state: LabExperiment) {
   const rows = (['B_PRICE', 'B_OI_POSITIVE'] as VariantId[]).map((variant) => {
     const trades = state.trades.filter((t) => t.variant_id === variant);
     const closed = trades.filter((t) => t.status === 'closed' && t.net_r != null);

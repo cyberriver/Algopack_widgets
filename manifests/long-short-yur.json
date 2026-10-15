@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.long-short-yur",
   "displayName": "FUTOI long/short юрлица",
+  "summary": "Длинные и короткие позиции юридических лиц.",
   "description": "Длинные и короткие позиции юридических лиц.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "57a938870f30a9f59755be7a06739211d880f5eec99fe6e35122dc3e2d3eb2d8"
+        "bundleSha256": "598ee8cf867f9820cefd2d9ce487668e545930be0caea0f8469fde75dad43f85"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/long-short-yur",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/long-short-yur"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

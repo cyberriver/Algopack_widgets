@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.persons-yur",
   "displayName": "FUTOI число лиц юрлица",
+  "summary": "Количество юридических лиц с открытыми позициями.",
   "description": "Количество юридических лиц с открытыми позициями.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "7d18c9e0e06d894b08b0b329a1a6578680745f83dd3a0ffeb5d92cb405b50903"
+        "bundleSha256": "8ba663f4acc65788aa06568ecba928c822b7bd4914d1dab518b82b03bcb64654"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/persons-yur",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/persons-yur"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

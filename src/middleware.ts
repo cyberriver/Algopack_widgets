@@ -11,7 +11,11 @@ function allowedOrigin(origin: string): boolean {
   if (origin === 'http://localhost:3010' || origin === 'https://cyberriver.github.io') return true;
   try {
     const host = new URL(origin).hostname;
-    return host.endsWith('.changesandbox.ru') || host.endsWith('.finam.ru');
+    return (
+      host.endsWith('.changesandbox.ru') ||
+      host.endsWith('.finam.ru') ||
+      host.endsWith('.sslip.io')
+    );
   } catch {
     return false;
   }

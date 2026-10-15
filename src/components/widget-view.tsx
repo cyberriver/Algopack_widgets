@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { setupEmbedShell } from '@finamx/extension-sdk';
 import { useBridge } from '@/hooks/use-bridge';
 import { useFutoiBundle, useFutoiSeries, useFutoiSnapshot, useUniverse } from '@/hooks/use-futoi-data';
@@ -31,12 +31,14 @@ function paneStatus(
   return token;
 }
 
+const InitialToken = createContext<TokenStatus>('no_token');
+
 function useShell(slug: WidgetSlug) {
   const { bridge } = useBridge(extensionIdFor(slug));
   const universe = useUniverse();
   const isPublisher = slug === 'filter' || slug === 'dashboard';
   const filterState = useFutoiFilter(bridge, { publish: isPublisher, universe });
-  const token = useTokenGate();
+  const token = useTokenGate(useContext(InitialToken));
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const rootRef = useCallback((node: HTMLDivElement | null) => setRootEl(node), []);
   useHostTokens(bridge, rootEl);
@@ -184,7 +186,7 @@ function DashboardWidget() {
   );
 }
 
-export function WidgetView({ slug }: { slug: WidgetSlug }) {
+export function WidgetView({ slug, tokenStatus = 'no_token' }: { slug: WidgetSlug; tokenStatus?: TokenStatus }) {
   if (isLabSlug(slug)) {
     return (
       <div style={page}>
@@ -207,9 +209,11 @@ export function WidgetView({ slug }: { slug: WidgetSlug }) {
   else body = <ChartWidget slug={slug} kind="directed" group="YUR" />;
 
   return (
-    <div style={page}>
-      <WidgetMenu current={slug} />
-      {body}
-    </div>
+    <InitialToken.Provider value={tokenStatus}>
+      <div style={page}>
+        <WidgetMenu current={slug} />
+        {body}
+      </div>
+    </InitialToken.Provider>
   );
 }

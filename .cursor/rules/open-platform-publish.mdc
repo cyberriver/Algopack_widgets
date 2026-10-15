@@ -1,0 +1,43 @@
+---
+description: Публикация виджетов Algopack в FinamX Open Platform
+alwaysApply: false
+---
+
+# Open Platform publish
+
+Портал: `https://openplatform.changesandbox.ru`. Пользовательский host:
+`https://finamx-op-host.changesandbox.ru`.
+
+## Перед публикацией
+
+1. Собрать и проверить приложение: `npx tsc --noEmit && npm run build`.
+2. Сначала развернуть код на `https://79.174.81.214.sslip.io` и проверить страницы/API.
+3. Поднять semver нужных lab-манифестов в `scripts/generate-manifests.mjs`. Одобренные байты версии не менять:
+   любая правка — новая версия.
+4. Пересоздать SHA-256 после деплоя:
+   `EMBED_PUBLIC_URL=https://79.174.81.214.sslip.io npm run manifests`.
+5. Проверить, что `.env`, токены и `data/lab/` не попадают в git. Токен читается из локального `.env`
+   как `FINAMX_DEV_TOKEN`; его нельзя печатать или коммитить.
+
+## Публикация только новых lab-виджетов
+
+```bash
+node scripts/publish-ext.mjs \
+  lab-experiments.json \
+  lab-monitor.json \
+  lab-results.json
+```
+
+Скрипт создаёт расширение или добавляет последнюю версию существующего. Не запускать без аргументов, если нужно
+обновить только лабораторию: режим без аргументов публикует все манифесты.
+
+Lab-виджеты используют `external-embed`, потому что Next.js BFF и live collector нельзя упаковать в статический
+artifact. `embedSandbox` не добавлять. URL и `bundleSha256` должны ссылаться на уже проверенный production build.
+
+## После публикации
+
+- Зафиксировать HTTP-статус по каждому `extensionId`. Новая версия обычно становится `pending_version`/`in_review`.
+- Если версия требует модерации: в админке одобрить домен, перевести версию в Published и проверить
+  Extension Host Availability для `com.finamx.op-host`.
+- Проверить виджет внутри host. Публикация манифеста сама по себе не означает, что версия уже доступна пользователям.
+- При `EXTENSION_INTEGRITY_DRIFT` не перезаписывать версию — увеличить semver и опубликовать новую.

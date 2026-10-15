@@ -1,0 +1,31 @@
+---
+description: Выкладка виджетов на VPS 79.174.81.214.sslip.io
+alwaysApply: true
+---
+
+# Выкладка на sslip.io
+
+Прод: [https://79.174.81.214.sslip.io/](https://79.174.81.214.sslip.io/) — Docker на REG.RU (хост `purple-thallium`, `/opt/algopack-widgets`). `.env` только на сервере, в git и rsync не класть.
+
+```bash
+# 1) с ноутбука — код без секретов
+rsync -az \
+  --exclude .env --exclude node_modules --exclude .next --exclude data \
+  --exclude .git --exclude '*.pdf' \
+  /home/cyberriver/Algopack_widgets/ purple-thallium:/opt/algopack-widgets/
+
+# 2) сборка и перезапуск (HTTPS = Caddy + профиль https)
+ssh purple-thallium 'cd /opt/algopack-widgets && docker compose --profile https up -d --build'
+
+# 3) проверка
+curl -skI https://79.174.81.214.sslip.io/ | head
+curl -sk https://79.174.81.214.sslip.io/widgets/lab-observations | head
+```
+
+SSH: `Host purple-thallium` → `root@79.174.81.214`, ключ `~/.ssh/id_ed25519_regru_purple_thallium`. На VPS нет `.git` — только rsync, не `git pull`.
+
+Манифесты Open Platform: после живого деплоя `EMBED_PUBLIC_URL=https://79.174.81.214.sslip.io npm run manifests` (пин sha256), затем `node scripts/publish-ext.mjs`. Это не заменяет шаг 2.
+
+Журнал лаборатории: том `lab_data` → `/app/data/lab`. Без него контейнер (`USER nextjs`) не пишет `state.json` и тик отдаёт ошибку в браузер.
+
+Нельзя: `npm audit fix --force`; коммитить `.env`; слать `ALGOPACK_TOKEN` в iframe.

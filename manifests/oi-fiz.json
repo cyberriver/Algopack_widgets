@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.oi-fiz",
   "displayName": "FUTOI открытый интерес физлица",
+  "summary": "Сумма длинных и коротких позиций физических лиц.",
   "description": "Сумма длинных и коротких позиций физических лиц.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "e50ce10fae2b1fecb6f12778943b5fbf88f5fe9c59e0cf581a6390d9451220b7"
+        "bundleSha256": "ebc192c4216b655b5082177d718b55b387b229c418d8f920ba80c73836f33acd"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/oi-fiz",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/oi-fiz"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

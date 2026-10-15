@@ -1,0 +1,18 @@
+---
+description: Лаборатория Si_breakout — движок на BFF, факты неизменяемы
+globs: src/lib/lab/**/*.ts,src/app/api/lab/**/*.ts,src/components/lab-*.tsx,src/hooks/use-lab.ts
+alwaysApply: false
+---
+
+# Лаборатория FUTOI
+
+- Детектор и журнал живут на BFF (`/api/lab/*`, `data/lab/`). Виджет только рисует и пишет аннотации.
+- P0/P0.1: M5, варианты `B_PRICE` и `B_OI_POSITIVE`. F-семейство, PlaceOrder, `finamx.timeframe` как переключатель — не делать.
+- Факт события не править в ячейке. Качество, заметка и `hypothesis_ids` — `annotations`, не overwrite.
+- `price_source` = `algopack_tradestats`. Снимок OI: `available_time < bar_start` через `getSeries` + `joinOi`. Старый снимок не выбрасывать; `oi_unavailable` только если снимка нет.
+- ΔOI фильтра = `ln(OI_now/OI_ref)`. Разница контрактов пишется, в filter не идёт. `oi_fresh` если age ≤ 10 мин.
+- `futoi_lifetime_sec` = сейчас − последний успешный APIM. Лампа OI смотрит lifetime, не age бара.
+- Смена инструмента (`/api/lab/instrument`, W12) закрывает журнал и сбрасывает прогрев. Слушать только `fdc3.instrument`.
+- Гипотезы: только H-MOVE / H-OI / H-BRK / H-CONF. Нет кнопки «подтверждена».
+- Три лампы раздельно: жёлтый OI не гасит зелёную цену. `execution_ready` серый до P4.
+- На графике нет вердикта. `live_variant` = `unset` до конца P3.

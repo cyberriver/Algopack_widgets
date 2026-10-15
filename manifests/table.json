@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.table",
   "displayName": "FUTOI таблица",
+  "summary": "Снимок открытых позиций физлиц и юрлиц. Обновление каждые 5 минут.",
   "description": "Снимок открытых позиций физлиц и юрлиц. Обновление каждые 5 минут.",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "aed934f59967b116b3ef8db6e1ac62edd4b17f030eba461e7398120b1860329d"
+        "bundleSha256": "74150862b1a018116c5530abebecb666c8896bd39d47cc958adf0fd934d4fa28"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/table",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/table"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

@@ -114,6 +114,9 @@ export type WidgetSlug =
   | 'directed-fiz'
   | 'directed-yur'
   | 'dashboard'
+  | 'lab-experiments'
+  | 'lab-monitor'
+  | 'lab-results'
   | 'lab-protocol'
   | 'lab-readiness'
   | 'lab-b'
@@ -141,18 +144,24 @@ export const WIDGETS: Array<{
   { slug: 'directed-fiz', name: 'directed-fiz', displayName: 'FUTOI направленная физлица', description: 'Направленная позиция физлиц.' },
   { slug: 'directed-yur', name: 'directed-yur', displayName: 'FUTOI направленная юрлица', description: 'Направленная позиция юрлиц.' },
   { slug: 'dashboard', name: 'dashboard', displayName: 'FUTOI обзор', description: 'Таблица и все графики.' },
+  { slug: 'lab-experiments', name: 'lab-experiments', displayName: 'Лаборатория: эксперименты', description: 'Параллельные неизменяемые конфигурации стратегии.' },
+  { slug: 'lab-monitor', name: 'lab-monitor', displayName: 'Лаборатория: монитор', description: 'Потоки Algopack, M5, сигналы и открытые виртуальные сделки.' },
+  { slug: 'lab-results', name: 'lab-results', displayName: 'Лаборатория: результаты', description: 'События, сделки, доходность и сравнение экспериментов.' },
   { slug: 'lab-protocol', name: 'lab-protocol', displayName: 'Лаборатория: протокол', description: 'Замороженные правила Si_breakout_v0.2.' },
   { slug: 'lab-readiness', name: 'lab-readiness', displayName: 'Лаборатория: готовность', description: 'Три лампы: цена, OI, исполнение.' },
-  { slug: 'lab-b', name: 'lab-b', displayName: 'Лаборатория B', description: 'Последний автодетект пробоя M5 без вердикта на графике.' },
+  { slug: 'lab-b', name: 'lab-b', displayName: 'Лаборатория: детектор пробоя', description: 'Последний автодетект пробоя M5 без вердикта на графике.' },
   { slug: 'lab-observations', name: 'lab-observations', displayName: 'Лаборатория: наблюдения', description: 'Неизменяемые события B0/B1 и аннотации.' },
   { slug: 'lab-summary', name: 'lab-summary', displayName: 'Лаборатория: сводка', description: 'Счётчики вариантов, не допуск в live.' },
   { slug: 'lab-method', name: 'lab-method', displayName: 'Лаборатория: методология', description: 'B0/B1, ΔOI и oi_unavailable простыми словами.' },
   { slug: 'lab-hypotheses', name: 'lab-hypotheses', displayName: 'Лаборатория: гипотезы', description: 'Реестр H-MOVE / H-OI / H-BRK / H-CONF.' },
   { slug: 'lab-instrument', name: 'lab-instrument', displayName: 'Лаборатория: инструмент', description: 'Семейство и серия. Смена закрывает журнал.' },
-  { slug: 'lab', name: 'lab', displayName: 'Лаборатория', description: 'Экраны P0.1 на одной карточке.' },
+  { slug: 'lab', name: 'lab', displayName: 'Лаборатория: обзор', description: 'Экраны P0.1 на одной карточке.' },
 ];
 
 const LAB_EXTENSION_SUFFIX: Record<string, string> = {
+  'lab-experiments': 'experiments',
+  'lab-monitor': 'monitor',
+  'lab-results': 'results',
   'lab-protocol': 'protocol',
   'lab-readiness': 'readiness',
   'lab-b': 'b',

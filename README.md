@@ -6,8 +6,8 @@
 
 ## Что здесь хранится
 
-- исходники 11 виджетов (один Next.js, порт 3010)
-- манифесты в `manifests/*.json` (версия `1.0.1`, те же `extensionId`: `com.finamx.algopack.futoi.*`)
+- исходники 14 виджетов (один Next.js, порт 3010): 11 FUTOI и 3 лаборатории
+- манифесты в `manifests/*.json`: `com.finamx.algopack.futoi.*` и `com.finamx.algopack.lab.*`
 - локальная сборка и прогон
 
 `.env` в git не попадает.
@@ -22,7 +22,12 @@ npm run dev
 ```
 
 Каталог: http://localhost:3010  
-Виджеты: http://localhost:3010/widgets/filter … `/widgets/dashboard`
+Виджеты: http://localhost:3010/widgets/filter … `/widgets/dashboard`, а также
+`/widgets/lab-experiments`, `/widgets/lab-monitor`, `/widgets/lab-results`.
+
+Лаборатория поддерживает параллельные неизменяемые конфигурации, historical replay и отдельный live-журнал.
+Бэктест считает edge, Sharpe, Sortino, доходность и денежный результат по заданным капиталу и риску на 1R.
+При завершении live-эксперимента сохраняется итоговый отчёт.
 
 ## URL бандла — честно
 

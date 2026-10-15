@@ -1,0 +1,44 @@
+{
+  "extensionId": "com.finamx.algopack.lab.results",
+  "displayName": "Лаборатория: результаты",
+  "summary": "Раздельные historical replay и live-события, сделки, доходность и гипотезы.",
+  "description": "Раздельные historical replay и live-события, сделки, доходность и гипотезы.",
+  "visibility": "public",
+  "status": "draft",
+  "platformSupport": [
+    "web"
+  ],
+  "versions": [
+    {
+      "version": "1.4.0",
+      "changelog": "Метрики бэктеста, денежная модель, итоговый live-отчёт, выбор результатов и компактные карточки",
+      "capabilitiesRequested": [
+        "ui.toast"
+      ],
+      "integrity": {
+        "bundleSha256": "310c66d542ca862a84df668f2dcd89f334be02b5034d86318ab550a4a6dbd175"
+      },
+      "surfaces": {
+        "ui": {
+          "renderMode": "external-embed",
+          "embedBundleUrl": "https://79.174.81.214.sslip.io/",
+          "embedEntryPath": "/widgets/lab-results"
+        },
+        "topics": {
+          "publishes": [],
+          "subscribes": [
+            {
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
+            }
+          ]
+        }
+      },
+      "monetization": {
+        "type": "free"
+      }
+    }
+  ]
+}

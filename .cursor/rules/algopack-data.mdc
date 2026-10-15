@@ -1,0 +1,36 @@
+---
+description: Данные только через Algopack APIM; переиспользовать BFF виджетов FUTOI
+alwaysApply: true
+---
+
+# Данные: Algopack, не ISS
+
+Источник правды: [ALGOPACK API](https://moexalgo.github.io/docs/api/).
+
+- Хост: `https://apim.moex.com`. Заголовок `Authorization: Bearer` из `ALGOPACK_TOKEN` / `withBearer`.
+- Не ходить на `iss.moex.com`. Не добавлять ISS fallback в лабораторию и новые загрузчики.
+- Не писать новый HTTP-клиент. Только `fetchJson` / `fetchMoex` из `src/lib/moex.ts` (TLS inspection уже учтён).
+- Токен не логировать, не класть в git, не в `localStorage`.
+
+## Что уже есть — звать это
+
+```ts
+// FUTOI (виджеты table/charts и лаборатория)
+getSeries('Si', from, to, { skipPrices: true })
+
+// Super Candles FO, нативные M5
+loadOhlcCandles('SiZ6', from, to, 5)
+// → GET /iss/datashop/algopack/fo/tradestats/SiZ6.json
+```
+
+```ts
+// ❌ BAD
+fetch('https://iss.moex.com/iss/engines/futures/.../candles.json')
+
+// ✅ GOOD
+await loadOhlcCandles(protocol.contract, from, to, 5)
+```
+
+- FUTOI тикер семейства: `Si`. Свечи Super Candles: контракт `SiZ6`.
+- Super Candles FO только 5 минут. Другой ТФ — ресэмпл на BFF, не ISS `interval=`.
+- Нет OI → событие и `B_PRICE` пишем, B1 = `oi_unavailable`. Нет цены → нет пробоя.

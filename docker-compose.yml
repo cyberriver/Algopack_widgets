@@ -11,6 +11,8 @@ services:
       PORT: "3010"
       HOSTNAME: 0.0.0.0
       NODE_ENV: production
+    volumes:
+      - lab_data:/app/data/lab
     ports:
       - "${APP_PORT:-3010}:3010"
     healthcheck:
@@ -25,6 +27,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  lab-worker:
+    image: algopack-widgets:1.0.2
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+    command:
+      - node
+      - -e
+      - >
+        const run = async () => {
+          try {
+            const response = await fetch('http://app:3010/api/lab/tick', { method: 'POST' });
+            if (!response.ok) console.error('lab tick', response.status);
+          } catch (error) {
+            console.error('lab tick', error);
+          } finally {
+            setTimeout(run, 30000);
+          }
+        };
+        run();
+    depends_on:
+      app:
+        condition: service_healthy
 
   caddy:
     profiles: ["https"]
@@ -47,3 +73,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  lab_data:

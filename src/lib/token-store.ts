@@ -22,6 +22,10 @@ export async function hasBearer(): Promise<boolean> {
   return Boolean(await resolveBearer());
 }
 
+export async function serverTokenReady(): Promise<boolean> {
+  return Boolean((await sessionToken()) || envToken());
+}
+
 export async function saveSessionToken(token: string): Promise<void> {
   const jar = await cookies();
   let sid = jar.get(COOKIE)?.value;

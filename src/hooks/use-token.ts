@@ -6,28 +6,44 @@ import { STATIC } from '@/lib/static-mode';
 import { clearLocalToken, readLocalToken, writeLocalToken } from '@/lib/token-local';
 import type { TokenStatus } from '@/lib/types';
 
-export function useTokenGate(): {
+function firstPaint(initial: TokenStatus): TokenStatus {
+  if (typeof window !== 'undefined' && readLocalToken()) return 'ok';
+  return initial === 'connecting' ? 'no_token' : initial;
+}
+
+async function readJson(res: Response): Promise<{ error?: TokenStatus; status?: TokenStatus }> {
+  return (await res.json().catch(() => ({}))) as { error?: TokenStatus; status?: TokenStatus };
+}
+
+export function useTokenGate(initial: TokenStatus = 'no_token'): {
   status: TokenStatus;
   ready: boolean;
   connect: (token: string, remember?: boolean) => Promise<void>;
   disconnect: () => void;
 } {
-  const [status, setStatus] = useState<TokenStatus>('connecting');
+  const [status, setStatus] = useState<TokenStatus>(() => firstPaint(initial));
 
   useEffect(() => {
-    if (readLocalToken()) {
+    if (STATIC) {
+      setStatus(readLocalToken() ? 'ok' : 'no_token');
+      return;
+    }
+    if (readLocalToken() || initial === 'ok') {
       setStatus('ok');
       return;
     }
-    if (STATIC) {
-      setStatus('no_token');
-      return;
-    }
-    void fetch(apiPath('/api/futoi/status'))
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), 8_000);
+    void fetch(apiPath('/api/futoi/status'), { signal: ac.signal })
       .then((r) => r.json())
       .then((json: { status?: TokenStatus }) => setStatus(json.status === 'ok' ? 'ok' : 'no_token'))
-      .catch(() => setStatus('no_token'));
-  }, []);
+      .catch(() => setStatus((cur) => (cur === 'connecting' ? 'no_token' : cur)))
+      .finally(() => window.clearTimeout(timer));
+    return () => {
+      window.clearTimeout(timer);
+      ac.abort();
+    };
+  }, [initial]);
 
   const connect = useCallback(async (token: string, remember = true) => {
     const value = token.trim();
@@ -36,39 +52,38 @@ export function useTokenGate(): {
       return;
     }
     setStatus('connecting');
-    const saved = writeLocalToken(value, remember);
-    if (!saved) {
+    if (!writeLocalToken(value, remember)) {
       setStatus('upstream_error');
       return;
     }
-
     if (STATIC) {
       setStatus('ok');
       return;
     }
 
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), 12_000);
     try {
       const res = await fetch(apiPath('/api/futoi/token'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: value }),
+        signal: ac.signal,
       });
-      const json = (await res.json()) as { error?: TokenStatus; status?: TokenStatus };
-      if (json.error === 'subscription_expired') {
+      const json = await readJson(res);
+      if (json.error === 'subscription_expired' || res.status === 403) {
         setStatus('subscription_expired');
         return;
       }
-      if (json.error === 'no_token' && !res.ok) {
-        setStatus('no_token');
-        return;
-      }
-      if (json.error === 'upstream_error' && !res.ok) {
-        setStatus('upstream_error');
+      if (!res.ok || json.error) {
+        setStatus(json.error === 'no_token' ? 'no_token' : 'upstream_error');
         return;
       }
       setStatus('ok');
     } catch {
       setStatus('upstream_error');
+    } finally {
+      window.clearTimeout(timer);
     }
   }, []);
 

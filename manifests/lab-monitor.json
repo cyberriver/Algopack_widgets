@@ -1,0 +1,44 @@
+{
+  "extensionId": "com.finamx.algopack.lab.monitor",
+  "displayName": "Лаборатория: монитор",
+  "summary": "M5-свечи, условные маркеры пробоев, дорожки и сравнение нескольких экспериментов.",
+  "description": "M5-свечи, условные маркеры пробоев, дорожки и сравнение нескольких экспериментов.",
+  "visibility": "public",
+  "status": "draft",
+  "platformSupport": [
+    "web"
+  ],
+  "versions": [
+    {
+      "version": "1.4.0",
+      "changelog": "Метрики бэктеста, денежная модель, итоговый live-отчёт, выбор результатов и компактные карточки",
+      "capabilitiesRequested": [
+        "ui.toast"
+      ],
+      "integrity": {
+        "bundleSha256": "b36867058020e829596e8b0779024cd93191632292e784618e9c58f5c04e86a7"
+      },
+      "surfaces": {
+        "ui": {
+          "renderMode": "external-embed",
+          "embedBundleUrl": "https://79.174.81.214.sslip.io/",
+          "embedEntryPath": "/widgets/lab-monitor"
+        },
+        "topics": {
+          "publishes": [],
+          "subscribes": [
+            {
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
+            }
+          ]
+        }
+      },
+      "monetization": {
+        "type": "free"
+      }
+    }
+  ]
+}

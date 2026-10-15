@@ -1,43 +1,49 @@
 {
   "extensionId": "com.finamx.algopack.futoi.directed-yur",
   "displayName": "FUTOI направленная юрлица",
+  "summary": "Направленная позиция юридических лиц (long − short).",
   "description": "Направленная позиция юридических лиц (long − short).",
   "visibility": "public",
+  "status": "draft",
   "platformSupport": [
     "web"
   ],
   "versions": [
     {
-      "version": "1.0.3",
-      "changelog": "BFF на VPS; с графика убраны печати 23:40 и 23:50 (хвост закрытия сессии)",
+      "version": "1.0.5",
+      "changelog": "Лаборатория P0.1 и токены фона/цвета хоста Open Platform",
       "capabilitiesRequested": [
-        "user.profile.read",
         "ui.toast"
       ],
       "integrity": {
-        "bundleSha256": "c805dcf31f998feaa2d29cad4c4b8ad0e127c05c63c1a1828e26769302485e6d"
+        "bundleSha256": "12d26c2bdaabf1128cb260fa54a81d2e9eb7d3fe28b60473fde8c8abe9b13d31"
       },
       "surfaces": {
         "ui": {
           "renderMode": "external-embed",
           "embedBundleUrl": "https://79.174.81.214.sslip.io/",
-          "embedEntryPath": "/widgets/directed-yur",
-          "embedSandbox": "allow-scripts allow-popups"
+          "embedEntryPath": "/widgets/directed-yur"
         },
         "topics": {
           "publishes": [],
           "subscribes": [
             {
-              "topicType": "com.finamx.algopack.futoi.filter"
+              "topicType": "com.finamx.algopack.futoi.filter",
+              "delivery": [
+                "bridge"
+              ]
             },
             {
-              "topicType": "fdc3.instrument"
-            },
-            {
-              "topicType": "finamx.timeframe"
+              "topicType": "fdc3.instrument",
+              "delivery": [
+                "bridge"
+              ]
             }
           ]
         }
+      },
+      "monetization": {
+        "type": "free"
       }
     }
   ]

@@ -15,8 +15,9 @@ export async function POST(request: Request) {
   setRequestBearer(token);
   clearUpstreamDown();
   const probe = await probeToken(token);
-  if (probe === 'subscription_expired') {
-    return NextResponse.json({ error: 'subscription_expired' }, { status: 403 });
+  if (probe !== 'ok') {
+    const status = probe === 'subscription_expired' ? 403 : 502;
+    return NextResponse.json({ error: probe }, { status });
   }
   await saveSessionToken(token);
   return NextResponse.json({ status: 'ok', probe });
